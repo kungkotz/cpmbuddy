@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sunclass Cargo Reconciler</title>
+<style>
+  :root {
+    --bg: #0b0f0f;
+    --bg-elev: #12191a;
+    --card: #141d1e;
+    --line: #223032;
+    --text: #eef4f3;
+    --text-dim: #8fa3a5;
+    --accent: #00c2b8;
+    --accent-dim: #063a38;
+    --success: #35d07f;
+    --error: #ff5c5c;
+    --catering: #ffb238;
+    --cargo: #4ea1ff;
+    --mail: #c586ff;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0 0 90px 0;
+    line-height: 1.35;
+  }
+
+  .mono { font-variant-numeric: tabular-nums; font-family: "SF Mono", "Menlo", "Consolas", monospace; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: linear-gradient(180deg, rgba(11,15,15,0.98), rgba(11,15,15,0.94));
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 14px 10px;
+  }
+  .topbar h1 {
+    margin: 0 0 10px 0;
+    font-size: 17px;
+    letter-spacing: 0.2px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .topbar h1 span { color: var(--accent); }
+
+  .ac-toggle {
+    display: flex;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 3px;
+  }
+  .ac-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 6px;
+    border-radius: 8px;
+    min-height: 40px;
+  }
+  .ac-btn.active {
+    background: var(--accent);
+    color: #002826;
+  }
+
+  /* ---------- Summary / nav strip ---------- */
+  .summary-strip {
+    position: sticky;
+    top: 65px;
+    z-index: 20;
+    background: rgba(11,15,15,0.97);
+    border-bottom: 1px solid var(--line);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .grand-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .hold-nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+  }
+  .hold-nav::-webkit-scrollbar { display: none; }
+  .nav-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error); flex-shrink: 0; }
+  .nav-dot.match { background: var(--success); }
+  .nav-dot.empty { background: #445; }
+
+  /* ---------- Main / cards ---------- */
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 14px 12px 0;
+  }
+
+  .hold-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+    scroll-margin-top: 120px;
+  }
+
+  .hold-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .hold-head h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    color: var(--text);
+  }
+  .hold-note {
+    margin: 2px 0 12px 0;
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .status-badge {
+    padding: 4px 9px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .match { background: rgba(53,208,127,0.18); color: var(--success); border: 1px solid rgba(53,208,127,0.4); }
+  .mismatch { background: rgba(255,92,92,0.14); color: var(--error); border: 1px solid rgba(255,92,92,0.35); }
+  .empty-badge { background: transparent; color: var(--text-dim); border: 1px solid var(--line); }
+
+  .target-row {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+  }
+  .target-row label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 5px;
+  }
+
+  input[type="number"], input[type="text"] {
+    width: 100%;
+    background: #1c2626;
+    border: 1px solid #2b3a3c;
+    color: #fff;
+    padding: 10px 10px;
+    border-radius: 7px;
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+    font-weight: 600;
+  }
+  input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+  input::placeholder { color: #56696b; font-weight: 400; }
+
+  .tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 9px;
+  }
+
+  .tile {
+    background: #171f20;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .tile.type-catering { border-color: var(--catering); background: #241c0b; }
+  .tile.type-cargo { border-color: var(--cargo); background: #0b1c28; }
+  .tile.type-mail { border-color: var(--mail); background: #1e0e26; }
+
+  .tile-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 5px;
+  }
+  .tile label {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: var(--text-dim);
+    letter-spacing: 0.2px;
+  }
+  .tile.type-catering label { color: var(--catering); }
+  .tile.type-cargo label { color: var(--cargo); }
+  .tile.type-mail label { color: var(--mail); }
+
+  .chip {
+    font-size: 9.5px;
+    color: var(--text-dim);
+    background: #0d1414;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .tile.type-catering .chip { color: #c9ffb0; background: #12280f; }
+
+  .tile input { padding: 8px; font-size: 15px; margin-bottom: 6px; }
+  .tile.type-catering input { background: #12280f; color: #c9ffb0; font-weight: 700; }
+
+  .mode-seg {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+  }
+  .mode-btn {
+    background: #0d1414;
+    border: 1px solid #263334;
+    color: var(--text-dim);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 7px 2px;
+    border-radius: 5px;
+    min-height: 30px;
+  }
+  .mode-btn.active { background: var(--accent); color: #002826; border-color: var(--accent); }
+  .tile.type-catering .mode-btn[data-mode="catering"].active { background: var(--catering); border-color: var(--catering); }
+  .tile.type-cargo .mode-btn[data-mode="cargo"].active { background: var(--cargo); border-color: var(--cargo); }
+  .tile.type-mail .mode-btn[data-mode="mail"].active { background: var(--mail); border-color: var(--mail); }
+
+  /* gauge */
+  .gauge-wrap { margin-top: 12px; }
+  .gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .gauge {
+    position: relative;
+    height: 8px;
+    background: #0d1414;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .gauge-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 5px 0 0 5px;
+    transition: width 0.2s ease, background 0.2s ease;
+  }
+  .gauge-fill.over { background: var(--error); }
+  .gauge-fill.match { background: var(--success); }
+  .gauge-target-mark {
+    position: absolute;
+    top: -2px; bottom: -2px;
+    width: 2px;
+    background: #fff;
+    left: 100%;
+  }
+
+  /* bottom bar */
+  .bottombar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(11,15,15,0.97);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    padding: 10px 14px;
+    display: flex;
+    justify-content: center;
+    z-index: 30;
+  }
+  .clear-btn {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 18px;
+    border-radius: 8px;
+    max-width: 640px;
+    width: 100%;
+  }
+  .clear-btn:active { background: #1c2626; color: var(--text); }
+
+  @media (min-width: 480px) {
+    .tiles-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1><span>Sunclass</span> Cargo Reconciler</h1>
+  <div class="ac-toggle">
+    <button class="ac-btn active" id="btn-A390" onclick="switchAircraft('A390')">A330-900 · A390</button>
+    <button class="ac-btn" id="btn-A333" onclick="switchAircraft('A333')">A330-300 · A333</button>
+  </div>
+</header>
+
+<div class="summary-strip">
+  <span class="grand-label">Total</span>
+  <span id="grand-status" class="status-badge empty-badge">—</span>
+  <div class="hold-nav" id="hold-nav"></div>
+</div>
+
+<main id="holds-root"></main>
+
+<div class="bottombar">
+  <button class="clear-btn" onclick="clearAll()">Clear all fields</button>
+</div>
+
+<script>
+  // ---------------------------------------------------------------
+  // Config
+  // ---------------------------------------------------------------
+  let currentAircraft = 'A390';
+
+  const HOLD_DEFS = [
+    {
+      key: 'h1',
+      title: 'HOLD 1',
+      note: { A390: 'Sections 11–13 (A330-900 configuration)', A333: 'Sections 11–12 (A330-300 configuration)' },
+      positions: {
+        A390: ['11L','11P','11R','12L','12P','12R','13L','13R'],
+        A333: ['11L','11P','11R','12L','12P','12R']
+      }
+    },
+    {
+      key: 'h2',
+      title: 'HOLD 2',
+      note: { A390: 'Sections 21–26 (standard fleet layout)', A333: 'Sections 21–26 (standard fleet layout)' },
+      positions: {
+        A390: ['21L','21P','21R','22L','22P','22R','23L','23P','23R','24L','24P','24R','25L','25R','26L','26R'],
+        A333: ['21L','21P','21R','22L','22P','22R','23L','23P','23R','24L','24P','24R','25L','25R','26L','26R']
+      }
+    },
+    {
+      key: 'h3',
+      title: 'HOLD 3',
+      note: { A390: 'Sections 32–34 (A330-900 configuration)', A333: 'Sections 31–34 (A330-300 configuration)' },
+      positions: {
+        A390: ['32L','32P','32R','33L','33P','33R','34L','34R'],
+        A333: ['31L','31P','31R','32L','32P','32R','33L','33P','33R','34L','34R']
+      }
+    },
+    {
+      key: 'h4',
+      title: 'HOLD 4',
+      note: { A390: 'Sections 41–43 (standard fleet layout)', A333: 'Sections 41–43 (standard fleet layout)' },
+      positions: {
+        A390: ['41L','41P','41R','42L','42P','42R','43L','43R'],
+        A333: ['41L','41P','41R','42L','42P','42R','43L','43R']
+      }
+    },
+    {
+      key: 'h5',
+      title: 'HOLD 5',
+      note: { A390: 'Loose bulk compartment', A333: 'Loose bulk compartment' },
+      positions: { A390: ['BULK'], A333: ['BULK'] },
+      isBulk: true
+    }
+  ];
+
+  // ---------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------
+  function pid(holdKey, code) { return holdKey + '-' + code.toLowerCase(); }
+
+  function tileHTML(holdKey, code) {
+    const id = pid(holdKey, code);
+    return `
+      <div class="tile" id="wrap-${id}">
+        <div class="tile-head">
+          <label id="lbl-${id}">${code} Bags</label>
+          <span class="chip" id="calc-${id}">0 kg</span>
+        </div>
+        <input type="number" inputmode="decimal" id="${id}" placeholder="0" oninput="calculate()">
+        <div class="mode-seg" id="seg-${id}">
+          <button type="button" tabindex="-1" class="mode-btn active" data-mode="bags" onclick="setMode('${id}','bags')">Bags</button>
+          <button type="button" tabindex="-1" class="mode-btn" data-mode="catering" onclick="setMode('${id}','catering')">Cat</button>
+          <button type="button" tabindex="-1" class="mode-btn" data-mode="cargo" onclick="setMode('${id}','cargo')">Cargo</button>
+          <button type="button" tabindex="-1" class="mode-btn" data-mode="mail" onclick="setMode('${id}','mail')">Mail</button>
+        </div>
+      </div>`;
+  }
+
+  function holdCardHTML(def) {
+    const codes = def.positions[currentAircraft];
+    const tiles = codes.map(c => tileHTML(def.key, c)).join('');
+    return `
+      <section class="hold-card" id="card-${def.key}">
+        <div class="hold-head">
+          <h2>${def.title}</h2>
+          <span id="status-${def.key}" class="status-badge empty-badge">Empty</span>
+        </div>
+        <p class="hold-note" id="note-${def.key}">${def.note[currentAircraft]}</p>
+        <div class="target-row">
+          <label>Target loadsheet weight (kg)</label>
+          <input type="number" inputmode="decimal" id="target-${def.key}" placeholder="0" oninput="calculate()">
+        </div>
+        <div class="tiles-grid" id="grid-${def.key}">
+          ${tiles}
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-labels"><span>0 kg</span><span id="gauge-cap-${def.key}">Target</span></div>
+          <div class="gauge">
+            <div class="gauge-fill" id="gauge-fill-${def.key}"></div>
+            <div class="gauge-target-mark" id="gauge-mark-${def.key}"></div>
+          </div>
+        </div>
+      </section>`;
+  }
+
+  function renderHold(key) {
+    const def = HOLD_DEFS.find(h => h.key === key);
+    const old = document.getElementById('card-' + key);
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = holdCardHTML(def).trim();
+    old.replaceWith(wrapper.firstChild);
+  }
+
+  function renderAll() {
+    const root = document.getElementById('holds-root');
+    root.innerHTML = HOLD_DEFS.map(holdCardHTML).join('');
+
+    const nav = document.getElementById('hold-nav');
+    nav.innerHTML = HOLD_DEFS.map(def => `
+      <button class="nav-pill" onclick="scrollToHold('${def.key}')">
+        <span class="nav-dot empty" id="dot-${def.key}"></span>${def.title.replace('HOLD ', 'H')}
+      </button>`).join('');
+  }
+
+  function scrollToHold(key) {
+    document.getElementById('card-' + key).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---------------------------------------------------------------
+  // Aircraft switching
+  // ---------------------------------------------------------------
+  function switchAircraft(type) {
+    currentAircraft = type;
+    document.getElementById('btn-A390').classList.toggle('active', type === 'A390');
+    document.getElementById('btn-A333').classList.toggle('active', type === 'A333');
+    // Only holds whose position layout changes need a rebuild; h2/h4/h5 stay put.
+    renderHold('h1');
+    renderHold('h3');
+    calculate();
+  }
+
+  // ---------------------------------------------------------------
+  // Mode (Bags / Catering / Cargo / Mail) selection
+  // ---------------------------------------------------------------
+  function setMode(id, mode) {
+    const seg = document.getElementById('seg-' + id);
+    if (!seg) return;
+    seg.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+    const input = document.getElementById(id);
+    const label = document.getElementById('lbl-' + id);
+    const wrap = document.getElementById('wrap-' + id);
+    const code = id.split('-')[1].toUpperCase();
+
+    wrap.classList.remove('type-catering', 'type-cargo', 'type-mail');
+
+    if (mode === 'catering') {
+      wrap.classList.add('type-catering');
+      label.textContent = code + ' Catering WT';
+      input.type = 'text';
+      input.readOnly = true;
+    } else {
+      input.type = 'number';
+      input.readOnly = false;
+      if (typeof input.value === 'string' && input.value.includes('kg')) input.value = '';
+      if (mode === 'bags') {
+        label.textContent = code + ' Bags';
+      } else if (mode === 'cargo') {
+        wrap.classList.add('type-cargo');
+        label.textContent = code + ' Cargo WT';
+      } else if (mode === 'mail') {
+        wrap.classList.add('type-mail');
+        label.textContent = code + ' Mail WT';
+      }
+    }
+    calculate();
+  }
+
+  function getActiveMode(id) {
+    const seg = document.getElementById('seg-' + id);
+    if (!seg) return 'bags';
+    const active = seg.querySelector('.mode-btn.active');
+    return active ? active.dataset.mode : 'bags';
+  }
+
+  // ---------------------------------------------------------------
+  // Calculation
+  // ---------------------------------------------------------------
+  function getVal(id) {
+    const el = document.getElementById(id);
+    if (!el || el.value === '' || isNaN(el.value)) return 0;
+    return parseFloat(el.value);
+  }
+
+  function updateStatus(badgeId, calculated, target) {
+    const badge = document.getElementById(badgeId);
+    if (!badge) return null;
+    const diff = Math.round((calculated - target) * 100) / 100;
+    if (target === 0 && calculated === 0) {
+      badge.textContent = 'Empty';
+      badge.className = 'status-badge empty-badge';
+      return 'empty';
+    } else if (diff === 0) {
+      badge.textContent = 'MATCH · ' + calculated + ' kg';
+      badge.className = 'status-badge match';
+      return 'match';
+    } else {
+      badge.textContent = (diff > 0 ? '+' : '') + diff + ' kg diff';
+      badge.className = 'status-badge mismatch';
+      return 'mismatch';
+    }
+  }
+
+  function updateGauge(key, calculated, target) {
+    const fill = document.getElementById('gauge-fill-' + key);
+    const mark = document.getElementById('gauge-mark-' + key);
+    const cap = document.getElementById('gauge-cap-' + key);
+    if (!fill) return;
+    const scale = Math.max(target, calculated, 1) * 1.15;
+    const fillPct = Math.min((calculated / scale) * 100, 100);
+    const markPct = target > 0 ? Math.min((target / scale) * 100, 100) : 0;
+    fill.style.width = fillPct + '%';
+    mark.style.left = markPct + '%';
+    fill.classList.remove('over', 'match');
+    if (target > 0 && calculated === target) fill.classList.add('match');
+    else if (target > 0 && calculated > target) fill.classList.add('over');
+    cap.textContent = 'Target ' + target + ' kg';
+  }
+
+  function computeFlexibleHold(holdKey, codes, targetValue, isBulk) {
+    let physicalSum = 0;
+    let cateringIds = [];
+
+    codes.forEach(code => {
+      const id = pid(holdKey, code);
+      const mode = getActiveMode(id);
+      const rawVal = document.getElementById(id).value;
+      let computed = 0;
+
+      if (mode === 'catering') {
+        cateringIds.push(id);
+      } else {
+        if (rawVal !== '' && !isNaN(rawVal) && parseFloat(rawVal) > 0) {
+          const n = parseFloat(rawVal);
+          if (mode === 'bags') {
+            computed = isBulk ? (n * 13) : ((n * 13) + 65);
+          } else if (mode === 'cargo' || mode === 'mail') {
+            computed = n;
+          }
+        }
+        physicalSum += computed;
+        const chip = document.getElementById('calc-' + id);
+        if (chip) chip.textContent = computed + ' kg';
+      }
+    });
+
+    if (cateringIds.length > 0) {
+      let cateringTotal = targetValue - physicalSum;
+      if (cateringTotal < 0 || targetValue === 0) cateringTotal = 0;
+      const split = Math.floor(cateringTotal / cateringIds.length);
+      cateringIds.forEach(id => {
+        document.getElementById(id).value = split + ' kg';
+        const chip = document.getElementById('calc-' + id);
+        if (chip) chip.textContent = split + ' kg';
+      });
+      return physicalSum + cateringTotal;
+    }
+    return physicalSum;
+  }
+
+  function calculate() {
+    let grandCalc = 0, grandTarget = 0, anyEntered = false;
+
+    HOLD_DEFS.forEach(def => {
+      const codes = def.positions[currentAircraft];
+      const target = getVal('target-' + def.key);
+      const total = computeFlexibleHold(def.key, codes, target, !!def.isBulk);
+      const state = updateStatus('status-' + def.key, total, target);
+      updateGauge(def.key, total, target);
+
+      const dot = document.getElementById('dot-' + def.key);
+      if (dot) dot.className = 'nav-dot ' + (state === 'match' ? 'match' : state === 'empty' ? 'empty' : '');
+
+      grandCalc += total;
+      grandTarget += target;
+      if (target !== 0 || total !== 0) anyEntered = true;
+    });
+
+    const grandBadge = document.getElementById('grand-status');
+    if (!anyEntered) {
+      grandBadge.textContent = '—';
+      grandBadge.className = 'status-badge empty-badge';
+    } else {
+      const diff = Math.round((grandCalc - grandTarget) * 100) / 100;
+      if (diff === 0) {
+        grandBadge.textContent = 'MATCH · ' + grandCalc + ' kg';
+        grandBadge.className = 'status-badge match';
+      } else {
+        grandBadge.textContent = (diff > 0 ? '+' : '') + diff + ' kg';
+        grandBadge.className = 'status-badge mismatch';
+      }
+    }
+  }
+
+  function clearAll() {
+    HOLD_DEFS.forEach(def => {
+      document.getElementById('target-' + def.key).value = '';
+      def.positions[currentAircraft].forEach(code => {
+        const id = pid(def.key, code);
+        setMode(id, 'bags');
+        document.getElementById(id).value = '';
+      });
+    });
+    calculate();
+  }
+
+  // ---------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------
+  renderAll();
+  calculate();
+</script>
+</body>
+</html>
