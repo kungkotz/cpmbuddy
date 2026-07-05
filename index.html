@@ -356,7 +356,10 @@
   }
   @media (min-width: 640px) {
     .modal-overlay { align-items: center; }
-    .modal-card { border-radius: 14px; margin: 20px; max-height: 88vh; }
+    .modal-card { border-radius: 14px; margin: 20px; max-height: 90vh; max-width: 720px; }
+  }
+  @media (min-width: 900px) {
+    .modal-card { max-width: 780px; padding: 24px 28px calc(24px + env(safe-area-inset-bottom)); }
   }
 
   .modal-head {
@@ -471,6 +474,103 @@
     flex: 1;
   }
   .copy-feedback.show { opacity: 1; }
+
+  /* ---------- Custom calendar picker ---------- */
+  .date-trigger {
+    width: 100%;
+    background: #1c2626;
+    border: 1px solid #2b3a3c;
+    color: #fff;
+    padding: 10px 10px;
+    border-radius: 7px;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    min-height: 42px;
+  }
+  .date-trigger:active,
+  .date-trigger.open { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  #cpm-date-display.placeholder { color: #56696b; font-weight: 400; }
+  .date-icon { font-size: 14px; opacity: 0.8; }
+
+  .calendar-pop {
+    display: none;
+    position: fixed;
+    z-index: 60;
+    width: 280px;
+    background: #101818;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.55);
+  }
+  .calendar-pop.open { display: block; }
+
+  .cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .cal-head span { font-size: 12.5px; font-weight: 800; color: var(--text); }
+  .cal-nav {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+  }
+
+  .cal-dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 4px;
+  }
+  .cal-dow span {
+    text-align: center;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 8px;
+  }
+  .cal-day {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 0;
+    border-radius: 6px;
+    min-height: 32px;
+  }
+  .cal-day:hover { background: var(--bg-elev); }
+  .cal-day.muted { color: #3f4f51; }
+  .cal-day.today { border: 1px solid var(--accent); }
+  .cal-day.selected { background: var(--accent); color: #002826; font-weight: 800; }
+
+  .cal-today {
+    width: 100%;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px;
+    border-radius: 7px;
+  }
 </style>
 </head>
 <body>
@@ -517,9 +617,24 @@
         </div>
       </div>
       <div class="field-row">
-        <div class="field">
+        <div class="field" style="position:relative;">
           <label>Date</label>
-          <input type="date" id="cpm-date">
+          <button type="button" class="date-trigger" id="cpm-date-trigger" onclick="toggleCalendar()">
+            <span id="cpm-date-display" class="placeholder">Select date</span>
+            <span class="date-icon">📅</span>
+          </button>
+          <div class="calendar-pop" id="cpm-calendar">
+            <div class="cal-head">
+              <button type="button" class="cal-nav" onclick="calShiftMonth(-1)">‹</button>
+              <span id="cal-month-label"></span>
+              <button type="button" class="cal-nav" onclick="calShiftMonth(1)">›</button>
+            </div>
+            <div class="cal-dow">
+              <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+            <button type="button" class="cal-today" onclick="calSelectToday()">Today</button>
+          </div>
         </div>
         <div class="field">
           <label>Destination</label>
@@ -936,20 +1051,131 @@
     document.getElementById('cpm-overlay').classList.add('open');
     document.getElementById('cpm-form-view').style.display = '';
     document.getElementById('cpm-result-view').style.display = 'none';
-    const dateInput = document.getElementById('cpm-date');
-    if (!dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+    if (!cpmSelectedDate) calSelectToday(true);
     refreshUldList();
   }
 
   function closeCpmModal() {
     document.getElementById('cpm-overlay').classList.remove('open');
+    closeCalendar();
   }
 
-  function formatCpmDate(dateStr) {
+  // ---------------------------------------------------------------
+  // Custom calendar picker (avoids native date-input quirks entirely)
+  // ---------------------------------------------------------------
+  let cpmSelectedDate = null; // Date object once a date is picked
+  let calViewYear, calViewMonth; // month currently shown in the dropdown
+  let calOutsideClickHandler = null;
+
+  function toggleCalendar() {
+    const pop = document.getElementById('cpm-calendar');
+    if (pop.classList.contains('open')) {
+      closeCalendar();
+    } else {
+      const base = cpmSelectedDate || new Date();
+      calViewYear = base.getFullYear();
+      calViewMonth = base.getMonth();
+      renderCalendar();
+
+      const trigger = document.getElementById('cpm-date-trigger');
+      const rect = trigger.getBoundingClientRect();
+      const popWidth = 280;
+      let left = rect.left;
+      if (left + popWidth > window.innerWidth - 12) left = window.innerWidth - popWidth - 12;
+      let top = rect.bottom + 6;
+      const estPopHeight = 300;
+      if (top + estPopHeight > window.innerHeight - 12) top = rect.top - estPopHeight - 6;
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+
+      pop.classList.add('open');
+      trigger.classList.add('open');
+      calOutsideClickHandler = function (e) {
+        if (!pop.contains(e.target) && e.target.id !== 'cpm-date-trigger' && !trigger.contains(e.target)) {
+          closeCalendar();
+        }
+      };
+      setTimeout(() => document.addEventListener('click', calOutsideClickHandler), 0);
+      const modalCard = document.querySelector('.modal-card');
+      if (modalCard) modalCard.addEventListener('scroll', closeCalendar, { once: true });
+    }
+  }
+
+  function closeCalendar() {
+    const pop = document.getElementById('cpm-calendar');
+    pop.classList.remove('open');
+    document.getElementById('cpm-date-trigger').classList.remove('open');
+    if (calOutsideClickHandler) {
+      document.removeEventListener('click', calOutsideClickHandler);
+      calOutsideClickHandler = null;
+    }
+  }
+
+  function calShiftMonth(delta) {
+    calViewMonth += delta;
+    if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+    if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('cal-month-label').textContent = months[calViewMonth] + ' ' + calViewYear;
+
+    const grid = document.getElementById('cal-grid');
+    const firstOfMonth = new Date(calViewYear, calViewMonth, 1);
+    // Monday-first weekday index (0=Mon ... 6=Sun)
+    const startOffset = (firstOfMonth.getDay() + 6) % 7;
+    const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(calViewYear, calViewMonth, 0).getDate();
+
+    const today = new Date();
+    const cells = [];
+
+    for (let i = 0; i < startOffset; i++) {
+      const d = daysInPrevMonth - startOffset + i + 1;
+      cells.push({ day: d, muted: true, y: calViewMonth === 0 ? calViewYear - 1 : calViewYear, m: calViewMonth === 0 ? 11 : calViewMonth - 1 });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push({ day: d, muted: false, y: calViewYear, m: calViewMonth });
+    }
+    while (cells.length % 7 !== 0) {
+      const d = cells.length - (startOffset + daysInMonth) + 1;
+      cells.push({ day: d, muted: true, y: calViewMonth === 11 ? calViewYear + 1 : calViewYear, m: calViewMonth === 11 ? 0 : calViewMonth + 1 });
+    }
+
+    grid.innerHTML = cells.map(c => {
+      const isToday = !c.muted && c.y === today.getFullYear() && c.m === today.getMonth() && c.day === today.getDate();
+      const isSelected = cpmSelectedDate && c.y === cpmSelectedDate.getFullYear() && c.m === cpmSelectedDate.getMonth() && c.day === cpmSelectedDate.getDate();
+      const cls = ['cal-day', c.muted ? 'muted' : '', isToday ? 'today' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+      return `<button type="button" class="${cls}" onclick="calSelectDay(${c.y},${c.m},${c.day})">${c.day}</button>`;
+    }).join('');
+  }
+
+  function calSelectDay(y, m, d) {
+    cpmSelectedDate = new Date(y, m, d);
+    document.getElementById('cpm-date-display').textContent = formatDateDisplay(cpmSelectedDate);
+    document.getElementById('cpm-date-display').classList.remove('placeholder');
+    closeCalendar();
+  }
+
+  function calSelectToday(silent) {
+    const t = new Date();
+    cpmSelectedDate = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    document.getElementById('cpm-date-display').textContent = formatDateDisplay(cpmSelectedDate);
+    document.getElementById('cpm-date-display').classList.remove('placeholder');
+    if (!silent) closeCalendar();
+  }
+
+  function formatDateDisplay(d) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return String(d.getDate()).padStart(2, '0') + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  function formatCpmDate() {
     const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    const d = new Date(dateStr + 'T00:00:00');
-    if (isNaN(d.getTime())) return 'DDMON';
-    return String(d.getDate()).padStart(2, '0') + months[d.getMonth()];
+    if (!cpmSelectedDate) return 'DDMON';
+    return String(cpmSelectedDate.getDate()).padStart(2, '0') + months[cpmSelectedDate.getMonth()];
   }
 
   function buildCpmData() {
@@ -957,7 +1183,7 @@
     const reg = (document.getElementById('cpm-reg').value || 'REG').trim().toUpperCase();
     const dest = (document.getElementById('cpm-dest').value || 'DEST').trim().toUpperCase();
     const si = document.getElementById('cpm-si').value.trim();
-    const dateCode = formatCpmDate(document.getElementById('cpm-date').value);
+    const dateCode = formatCpmDate();
     const rows = getActivePositionsForCpm();
 
     let raw = `CPM ${flight}/${dateCode}.${reg}`;
