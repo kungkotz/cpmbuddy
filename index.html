@@ -406,6 +406,8 @@
     font-family: inherit;
     resize: vertical;
   }
+  #cpm-si { resize: none;
+  }
   textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
   #cpm-raw { font-family: "SF Mono", "Menlo", "Consolas", monospace; font-size: 12.5px; min-height: 190px; }
 
@@ -598,7 +600,7 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="cpm-overlay">
+<div class="modal-overlay" id="cpm-overlay" onclick="if(event.target===this) closeCpmModal()">
   <div class="modal-card">
     <div class="modal-head">
       <h3>Generate CPM</h3>
