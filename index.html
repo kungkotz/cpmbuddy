@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sunclass Cargo Reconciler</title>
 <style>
   :root {
@@ -35,9 +35,10 @@
     --radius: 10px;
   }
 
+  /* Light palette applies when: OS prefers light AND not forced dark (auto),
+     or when forced light via .theme-light */
   @media (prefers-color-scheme: light) {
-    :root {
-      /* Light — same palette as TCOBuddy's "light" (ex-Aviator) theme */
+    :root:not(.theme-dark) {
       --bg: #f0f3f1;
       --bg-elev: #e8edea;
       --card: #ffffff;
@@ -65,6 +66,33 @@
       --chip-bg: rgba(20,40,80,0.06);
     }
   }
+  :root.theme-light {
+    --bg: #f0f3f1;
+    --bg-elev: #e8edea;
+    --card: #ffffff;
+    --line: rgba(20,40,80,0.12);
+    --line-hi: rgba(20,40,80,0.3);
+    --text: #142850;
+    --text-dim: rgba(20,40,80,0.6);
+    --hint: rgba(20,40,80,0.32);
+    --accent: #142850;
+    --accent-dim: rgba(20,40,80,0.08);
+    --on-accent: #ffffff;
+    --success: #1e6644;
+    --success-bg: rgba(30,102,68,0.1);
+    --error: #b83232;
+    --error-bg: rgba(184,50,50,0.1);
+    --catering: #8a6200;
+    --catering-bg: rgba(138,98,0,0.1);
+    --cargo: #1a6ef5;
+    --cargo-bg: rgba(26,110,245,0.1);
+    --mail: #7c3aed;
+    --mail-bg: rgba(124,58,237,0.1);
+    --field-bg: #ffffff;
+    --field-border: rgba(20,40,80,0.18);
+    --tile-bg: #f5f7f5;
+    --chip-bg: rgba(20,40,80,0.06);
+  }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -91,14 +119,42 @@
     border-bottom: 1px solid var(--line);
     padding: 10px 14px 10px;
   }
+  .topbar-titlerow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
   .topbar h1 {
-    margin: 0 0 10px 0;
+    margin: 0;
     font-size: 17px;
     letter-spacing: 0.2px;
     font-weight: 700;
     color: var(--text);
   }
   .topbar h1 span { color: var(--accent); }
+
+  .theme-toggle {
+    display: flex;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .theme-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 6px 9px;
+    border-radius: 6px;
+    min-height: 28px;
+  }
+  .theme-btn.active { background: var(--accent); color: var(--on-accent); }
 
   .ac-toggle {
     display: flex;
@@ -124,10 +180,22 @@
     color: var(--on-accent);
   }
 
+  .flight-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr 0.8fr;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .flight-row input {
+    padding: 8px 9px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
   /* ---------- Summary / nav strip ---------- */
   .summary-strip {
     position: sticky;
-    top: 65px;
+    top: var(--topbar-h, 108px);
     z-index: 20;
     background: color-mix(in srgb, var(--bg) 96%, transparent);
     border-bottom: 1px solid var(--line);
@@ -463,6 +531,42 @@
   .check-row input { width: auto; }
 
   .uld-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+  .uld-quick { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .quick-chip {
+    background: var(--chip-bg);
+    border: 1px solid var(--field-border);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 999px;
+  }
+  .quick-chip:active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+  .uld-type-seg { display: flex; gap: 4px; }
+  .uld-type-btn {
+    flex: 1;
+    background: var(--chip-bg);
+    border: 1px solid var(--field-border);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 8px 2px;
+    border-radius: 6px;
+    min-height: 34px;
+  }
+  .uld-type-btn.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .uld-type-fixed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--chip-bg);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 800;
+    border-radius: 6px;
+    min-height: 34px;
+  }
   .uld-row { background: var(--tile-bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
   .uld-row-head {
     display: flex;
@@ -504,6 +608,7 @@
   .readable-table th, .readable-table td { text-align: left; padding: 6px 5px; border-bottom: 1px solid var(--line); }
   .readable-table th { color: var(--text-dim); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; }
   .cpm-legend { font-size: 10.5px; color: var(--text-dim); margin: -4px 0 12px 0; }
+  .cpm-src-note { font-size: 11.5px; color: var(--text-dim); margin: 0 0 12px 0; font-style: italic; }
   .cpm-total { font-size: 11.5px; color: var(--text-dim); margin: -2px 0 14px 0; }
 
   .copy-feedback {
@@ -618,10 +723,22 @@
 <body>
 
 <header class="topbar">
-  <h1><span>Sunclass</span> Cargo Reconciler</h1>
+  <div class="topbar-titlerow">
+    <h1><span>Sunclass</span> Cargo Reconciler</h1>
+    <div class="theme-toggle" id="theme-toggle">
+      <button type="button" class="theme-btn active" data-theme="auto" onclick="setTheme('auto')">Auto</button>
+      <button type="button" class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
+      <button type="button" class="theme-btn" data-theme="light" onclick="setTheme('light')">Light</button>
+    </div>
+  </div>
   <div class="ac-toggle">
     <button class="ac-btn active" id="btn-A390" onclick="switchAircraft('A390')">A330-900 · A390</button>
     <button class="ac-btn" id="btn-A333" onclick="switchAircraft('A333')">A330-300 · A333</button>
+  </div>
+  <div class="flight-row">
+    <input type="text" id="hdr-flight" placeholder="Flight e.g. DK1234" style="text-transform:uppercase">
+    <input type="text" id="hdr-reg" placeholder="Reg e.g. OY-VKG" style="text-transform:uppercase">
+    <input type="text" id="hdr-dest" placeholder="Dest e.g. AGP" maxlength="4" style="text-transform:uppercase">
   </div>
 </header>
 
@@ -648,16 +765,7 @@
     </div>
 
     <div id="cpm-form-view">
-      <div class="field-row">
-        <div class="field">
-          <label>Flight number</label>
-          <input type="text" id="cpm-flight" placeholder="e.g. DK1234">
-        </div>
-        <div class="field">
-          <label>Registration</label>
-          <input type="text" id="cpm-reg" placeholder="e.g. OY-VKG">
-        </div>
-      </div>
+      <p class="cpm-src-note">Flight, registration and destination are taken from the header on the main screen.</p>
       <div class="field-row">
         <div class="field" style="position:relative;">
           <label>Date</label>
@@ -679,8 +787,8 @@
           </div>
         </div>
         <div class="field">
-          <label>Destination</label>
-          <input type="text" id="cpm-dest" placeholder="e.g. AGP" maxlength="4" style="text-transform:uppercase">
+          <label>ULD suffix</label>
+          <input type="text" id="cpm-callsign" placeholder="e.g. DK" maxlength="3" style="text-transform:uppercase">
         </div>
       </div>
       <div class="field">
@@ -695,6 +803,10 @@
 
       <div class="field">
         <label>ULD per position <span style="text-transform:none;font-weight:400;color:var(--text-dim);">— loaded positions only, Hold 5 bulk has none</span></label>
+        <div class="uld-quick">
+          <button type="button" class="quick-chip" onclick="setAllPalletTypes('PMC')">All P → PMC</button>
+          <button type="button" class="quick-chip" onclick="setAllPalletTypes('PLA')">All P → PLA</button>
+        </div>
         <div class="uld-list" id="cpm-uld-list"></div>
       </div>
 
@@ -718,6 +830,7 @@
       </div>
       <div class="btn-row">
         <button class="primary-btn" onclick="copyCpmRaw()">Copy raw text</button>
+        <button class="secondary-btn" id="cpm-share-btn" onclick="shareCpmRaw()" style="display:none;">Share…</button>
       </div>
       <div class="copy-feedback" id="cpm-copy-feedback">Copied to clipboard ✓</div>
     </div>
@@ -851,15 +964,49 @@
   }
 
   // ---------------------------------------------------------------
-  // Aircraft switching
+  // Aircraft switching (preserves entered data for positions that
+  // exist in both configurations)
   // ---------------------------------------------------------------
+  function snapshotHold(key) {
+    const def = HOLD_DEFS.find(h => h.key === key);
+    const allCodes = [...new Set([...def.positions.A390, ...def.positions.A333])];
+    const snap = { target: '', tiles: {} };
+    const targetEl = document.getElementById('target-' + key);
+    if (targetEl) snap.target = targetEl.value;
+    allCodes.forEach(code => {
+      const id = pid(key, code);
+      const el = document.getElementById(id);
+      if (el) snap.tiles[code] = { value: el.value, mode: getActiveMode(id) };
+    });
+    return snap;
+  }
+
+  function restoreHold(key, snap) {
+    const targetEl = document.getElementById('target-' + key);
+    if (targetEl) targetEl.value = snap.target;
+    Object.keys(snap.tiles).forEach(code => {
+      const id = pid(key, code);
+      const el = document.getElementById(id);
+      if (!el) return; // position doesn't exist in the new configuration
+      const t = snap.tiles[code];
+      if (t.mode !== 'bags') setMode(id, t.mode);
+      // catering values are recomputed by calculate(); only restore typed values
+      if (t.mode !== 'catering') el.value = t.value;
+    });
+  }
+
   function switchAircraft(type) {
+    if (type === currentAircraft) return;
+    const snapH1 = snapshotHold('h1');
+    const snapH3 = snapshotHold('h3');
     currentAircraft = type;
     document.getElementById('btn-A390').classList.toggle('active', type === 'A390');
     document.getElementById('btn-A333').classList.toggle('active', type === 'A333');
     // Only holds whose position layout changes need a rebuild; h2/h4/h5 stay put.
     renderHold('h1');
     renderHold('h3');
+    restoreHold('h1', snapH1);
+    restoreHold('h3', snapH3);
     calculate();
   }
 
@@ -981,11 +1128,13 @@
     if (cateringIds.length > 0) {
       let cateringTotal = targetValue - physicalSum;
       if (cateringTotal < 0 || targetValue === 0) cateringTotal = 0;
-      const split = Math.floor(cateringTotal / cateringIds.length);
-      cateringIds.forEach(id => {
-        document.getElementById(id).value = split + ' kg';
+      const base = Math.floor(cateringTotal / cateringIds.length);
+      let remainder = cateringTotal - base * cateringIds.length;
+      cateringIds.forEach((id, i) => {
+        const share = base + (i === 0 ? remainder : 0);
+        document.getElementById(id).value = share + ' kg';
         const chip = document.getElementById('calc-' + id);
-        if (chip) chip.textContent = split + ' kg';
+        if (chip) chip.textContent = share + ' kg';
       });
       return physicalSum + cateringTotal;
     }
@@ -1035,6 +1184,11 @@
         document.getElementById(id).value = '';
       });
     });
+    // New flight = clean slate: flight header and all CPM data too
+    document.getElementById('hdr-flight').value = '';
+    document.getElementById('hdr-reg').value = '';
+    document.getElementById('hdr-dest').value = '';
+    clearCpmFields();
     calculate();
   }
 
@@ -1073,6 +1227,47 @@
     return rows;
   }
 
+  // Persistent ULD state per position — survives list rebuilds and modal close,
+  // wiped only by "Clear all fields" or a page refresh.
+  const uldState = {};
+
+  function isPalletPosition(code) {
+    // A330 lower deck: L/R = half-width container positions (always AKE);
+    // P = full-width pallet position (PMC or PLA).
+    return code.toUpperCase().endsWith('P');
+  }
+
+  function defaultUldType(code) {
+    return isPalletPosition(code) ? 'PMC' : 'AKE';
+  }
+
+  function getUldState(id, code) {
+    if (!uldState[id]) uldState[id] = { type: defaultUldType(code), num: '' };
+    return uldState[id];
+  }
+
+  function setUldType(id, type) {
+    if (uldState[id]) uldState[id].type = type;
+    const seg = document.getElementById('uld-seg-' + id);
+    if (seg) {
+      seg.querySelectorAll('.uld-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    }
+  }
+
+  function setAllPalletTypes(type) {
+    getActivePositionsForCpm().forEach(r => {
+      if (!isPalletPosition(r.code)) return;
+      const st = getUldState(r.id, r.code);
+      st.type = type;
+      setUldType(r.id, st.type);
+    });
+  }
+
+  function saveUldNum(id) {
+    const el = document.getElementById('uld-num-' + id);
+    if (el && uldState[id]) uldState[id].num = el.value;
+  }
+
   function refreshUldList() {
     const list = document.getElementById('cpm-uld-list');
     const rows = getActivePositionsForCpm();
@@ -1080,17 +1275,26 @@
       list.innerHTML = '<div class="uld-empty">No loaded positions yet — enter weights in the reconciler above first.</div>';
       return;
     }
-    list.innerHTML = rows.map(r => `
+    list.innerHTML = rows.map(r => {
+      const st = getUldState(r.id, r.code);
+      const typeControl = isPalletPosition(r.code)
+        ? `<div class="uld-type-seg" id="uld-seg-${r.id}">
+            <button type="button" class="uld-type-btn ${st.type === 'PMC' ? 'active' : ''}" data-type="PMC" onclick="setUldType('${r.id}','PMC')">PMC</button>
+            <button type="button" class="uld-type-btn ${st.type === 'PLA' ? 'active' : ''}" data-type="PLA" onclick="setUldType('${r.id}','PLA')">PLA</button>
+          </div>`
+        : `<div class="uld-type-fixed">AKE</div>`;
+      return `
       <div class="uld-row">
         <div class="uld-row-head">
           <span>${r.code}</span>
           <span class="meta">${CONTENT_LABEL[r.mode]} · ${Math.round(r.weight)} kg</span>
         </div>
         <div class="uld-row-inputs">
-          <input type="text" id="uld-type-${r.id}" placeholder="ULD type e.g. AKE">
-          <input type="text" id="uld-num-${r.id}" placeholder="ULD number e.g. 12345LH">
+          ${typeControl}
+          <input type="text" inputmode="numeric" id="uld-num-${r.id}" placeholder="ULD number e.g. 12345" value="${st.num.replace(/"/g, '&quot;')}" oninput="saveUldNum('${r.id}')">
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   function openCpmModal() {
@@ -1225,9 +1429,10 @@
   }
 
   function buildCpmData() {
-    const flight = (document.getElementById('cpm-flight').value || 'FLTNBR').trim().toUpperCase();
-    const reg = (document.getElementById('cpm-reg').value || 'REG').trim().toUpperCase();
-    const dest = (document.getElementById('cpm-dest').value || 'DEST').trim().toUpperCase();
+    const flight = (document.getElementById('hdr-flight').value || 'FLTNBR').trim().toUpperCase();
+    const reg = (document.getElementById('hdr-reg').value || 'REG').trim().toUpperCase();
+    const dest = (document.getElementById('hdr-dest').value || 'DEST').trim().toUpperCase();
+    const callsign = document.getElementById('cpm-callsign').value.trim().toUpperCase();
     const si = document.getElementById('cpm-si').value.trim();
     const dateCode = formatCpmDate();
     const rows = getActivePositionsForCpm();
@@ -1236,9 +1441,9 @@
     const readableRows = [];
 
     rows.forEach(r => {
-      const uldType = (document.getElementById('uld-type-' + r.id)?.value || '').trim().toUpperCase();
-      const uldNum = (document.getElementById('uld-num-' + r.id)?.value || '').trim().toUpperCase();
-      const uld = (uldType + uldNum) || 'NIL';
+      const st = getUldState(r.id, r.code);
+      const uldNum = st.num.trim().toUpperCase();
+      const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
       const code = CONTENT_CODE[r.mode];
       const weight = Math.round(r.weight);
       raw += `\n-${r.code}/${uld}/${dest}/${weight}/${code}`;
@@ -1267,6 +1472,10 @@
   }
 
   function generateCpm() {
+    const missing = getActivePositionsForCpm().filter(r => !getUldState(r.id, r.code).num.trim()).length;
+    if (missing > 0 && !confirm(missing + ' position' + (missing === 1 ? ' has' : 's have') + ' no ULD number and will show NIL. Generate anyway?')) {
+      return;
+    }
     const data = buildCpmData();
     renderReadable(data);
     document.getElementById('cpm-raw').value = data.raw;
@@ -1275,11 +1484,10 @@
   }
 
   function clearCpmFields() {
-    document.getElementById('cpm-flight').value = '';
-    document.getElementById('cpm-reg').value = '';
-    document.getElementById('cpm-dest').value = '';
+    document.getElementById('cpm-callsign').value = '';
     document.getElementById('cpm-si').value = '';
     document.getElementById('cpm-include-catering').checked = false;
+    Object.keys(uldState).forEach(k => delete uldState[k]);
     cpmSelectedDate = null;
     const disp = document.getElementById('cpm-date-display');
     disp.textContent = 'Select date';
@@ -1322,11 +1530,48 @@
     setTimeout(() => fb.classList.remove('show'), 1600);
   }
 
+  function shareCpmRaw() {
+    const text = document.getElementById('cpm-raw').value;
+    if (navigator.share) {
+      navigator.share({ title: 'CPM', text: text }).catch(() => { /* user cancelled */ });
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Theme: auto (follows device) / dark / light
+  // ---------------------------------------------------------------
+  function setTheme(mode) {
+    document.documentElement.classList.remove('theme-dark', 'theme-light');
+    if (mode === 'dark') document.documentElement.classList.add('theme-dark');
+    if (mode === 'light') document.documentElement.classList.add('theme-light');
+    document.querySelectorAll('#theme-toggle .theme-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.theme === mode));
+    try { localStorage.setItem('sccr-theme', mode); } catch (e) { /* preview environments may block storage */ }
+  }
+
+  function initTheme() {
+    let saved = 'auto';
+    try { saved = localStorage.getItem('sccr-theme') || 'auto'; } catch (e) { /* ignore */ }
+    setTheme(saved);
+  }
+
   // ---------------------------------------------------------------
   // Init
   // ---------------------------------------------------------------
+  function measureTopbar() {
+    const h = document.querySelector('.topbar').offsetHeight;
+    document.documentElement.style.setProperty('--topbar-h', h + 'px');
+  }
+  window.addEventListener('resize', measureTopbar);
+
+  if (navigator.share) {
+    document.getElementById('cpm-share-btn').style.display = '';
+  }
+
   renderAll();
   calculate();
+  measureTopbar();
+  initTheme();
 </script>
 </body>
 </html>
