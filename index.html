@@ -38,6 +38,8 @@
     --field-border: rgba(255,255,255,0.14);
     --tile-bg: #17171f;
     --chip-bg: rgba(255,255,255,0.07);
+    --chip-fg: #ffc94d;
+    --chip-hi-bg: rgba(255,201,77,0.16);
     --radius: 10px;
   }
 
@@ -76,6 +78,8 @@
       --field-border: rgba(20,40,80,0.18);
       --tile-bg: #f5f7f5;
       --chip-bg: rgba(20,40,80,0.06);
+      --chip-fg: #9a6a00;
+      --chip-hi-bg: rgba(154,106,0,0.12);
     }
   }
   :root.theme-light {
@@ -110,6 +114,8 @@
     --field-border: rgba(20,40,80,0.18);
     --tile-bg: #f5f7f5;
     --chip-bg: rgba(20,40,80,0.06);
+    --chip-fg: #9a6a00;
+    --chip-hi-bg: rgba(154,106,0,0.12);
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -393,15 +399,13 @@
 
   .chip {
     font-size: 9.5px;
-    color: var(--text-dim);
-    background: var(--chip-bg);
+    color: var(--chip-fg);
+    background: var(--chip-hi-bg);
     padding: 2px 5px;
     border-radius: 4px;
-    font-weight: 700;
+    font-weight: 800;
     flex-shrink: 0;
   }
-  .tile.type-bags .chip { color: var(--bags); background: color-mix(in srgb, var(--bags) 22%, var(--card)); }
-  .tile.type-catering .chip { color: var(--catering); background: color-mix(in srgb, var(--catering) 22%, var(--card)); }
 
   .tile input { padding: 8px; font-size: 15px; margin-bottom: 6px; }
   .tile.type-catering input { background: color-mix(in srgb, var(--catering) 20%, var(--card)); color: var(--catering); font-weight: 700; }
