@@ -22,12 +22,18 @@
     --success-bg: rgba(62,207,142,0.12);
     --error: #ff5c5c;
     --error-bg: rgba(255,92,92,0.14);
-    --catering: #f5a623;
-    --catering-bg: rgba(245,166,35,0.14);
-    --cargo: #4f8fff;
-    --cargo-bg: rgba(79,143,255,0.14);
-    --mail: #c586ff;
-    --mail-bg: rgba(197,134,255,0.14);
+    --bags: #a06cff;
+    --bags-bg: rgba(160,108,255,0.14);
+    --bags-on: #14061f;
+    --catering: #17b8a6;
+    --catering-bg: rgba(23,184,166,0.14);
+    --catering-on: #04120f;
+    --cargo: #c8823c;
+    --cargo-bg: rgba(200,130,60,0.14);
+    --cargo-on: #170d02;
+    --mail: #3b82f6;
+    --mail-bg: rgba(59,130,246,0.14);
+    --mail-on: #ffffff;
     --field-bg: #1c1c27;
     --field-border: rgba(255,255,255,0.14);
     --tile-bg: #17171f;
@@ -54,12 +60,18 @@
       --success-bg: rgba(30,102,68,0.1);
       --error: #b83232;
       --error-bg: rgba(184,50,50,0.1);
-      --catering: #8a6200;
-      --catering-bg: rgba(138,98,0,0.1);
-      --cargo: #1a6ef5;
-      --cargo-bg: rgba(26,110,245,0.1);
-      --mail: #7c3aed;
-      --mail-bg: rgba(124,58,237,0.1);
+      --bags: #7c3aed;
+      --bags-bg: rgba(124,58,237,0.1);
+      --bags-on: #ffffff;
+      --catering: #0f8a7e;
+      --catering-bg: rgba(15,138,126,0.1);
+      --catering-on: #ffffff;
+      --cargo: #a15c1e;
+      --cargo-bg: rgba(161,92,30,0.1);
+      --cargo-on: #ffffff;
+      --mail: #1d5fd0;
+      --mail-bg: rgba(29,95,208,0.1);
+      --mail-on: #ffffff;
       --field-bg: #ffffff;
       --field-border: rgba(20,40,80,0.18);
       --tile-bg: #f5f7f5;
@@ -82,12 +94,18 @@
     --success-bg: rgba(30,102,68,0.1);
     --error: #b83232;
     --error-bg: rgba(184,50,50,0.1);
-    --catering: #8a6200;
-    --catering-bg: rgba(138,98,0,0.1);
-    --cargo: #1a6ef5;
-    --cargo-bg: rgba(26,110,245,0.1);
-    --mail: #7c3aed;
-    --mail-bg: rgba(124,58,237,0.1);
+    --bags: #7c3aed;
+    --bags-bg: rgba(124,58,237,0.1);
+    --bags-on: #ffffff;
+    --catering: #0f8a7e;
+    --catering-bg: rgba(15,138,126,0.1);
+    --catering-on: #ffffff;
+    --cargo: #a15c1e;
+    --cargo-bg: rgba(161,92,30,0.1);
+    --cargo-on: #ffffff;
+    --mail: #1d5fd0;
+    --mail-bg: rgba(29,95,208,0.1);
+    --mail-on: #ffffff;
     --field-bg: #ffffff;
     --field-border: rgba(20,40,80,0.18);
     --tile-bg: #f5f7f5;
@@ -350,6 +368,7 @@
     padding: 8px;
     transition: border-color 0.15s ease, background 0.15s ease;
   }
+  .tile.type-bags { border-color: var(--bags); background: color-mix(in srgb, var(--bags) 14%, var(--card)); }
   .tile.type-catering { border-color: var(--catering); background: color-mix(in srgb, var(--catering) 14%, var(--card)); }
   .tile.type-cargo { border-color: var(--cargo); background: color-mix(in srgb, var(--cargo) 14%, var(--card)); }
   .tile.type-mail { border-color: var(--mail); background: color-mix(in srgb, var(--mail) 14%, var(--card)); }
@@ -367,6 +386,7 @@
     color: var(--text-dim);
     letter-spacing: 0.2px;
   }
+  .tile.type-bags label { color: var(--bags); }
   .tile.type-catering label { color: var(--catering); }
   .tile.type-cargo label { color: var(--cargo); }
   .tile.type-mail label { color: var(--mail); }
@@ -380,6 +400,7 @@
     font-weight: 700;
     flex-shrink: 0;
   }
+  .tile.type-bags .chip { color: var(--bags); background: color-mix(in srgb, var(--bags) 22%, var(--card)); }
   .tile.type-catering .chip { color: var(--catering); background: color-mix(in srgb, var(--catering) 22%, var(--card)); }
 
   .tile input { padding: 8px; font-size: 15px; margin-bottom: 6px; }
@@ -390,6 +411,7 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 3px;
   }
+  .mode-seg.seg-nobags { grid-template-columns: repeat(3, 1fr); }
   .mode-btn {
     background: var(--chip-bg);
     border: 1px solid var(--field-border);
@@ -401,9 +423,10 @@
     min-height: 30px;
   }
   .mode-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-  .tile.type-catering .mode-btn[data-mode="catering"].active { background: var(--catering); border-color: var(--catering); color: var(--on-accent); }
-  .tile.type-cargo .mode-btn[data-mode="cargo"].active { background: var(--cargo); border-color: var(--cargo); color: var(--on-accent); }
-  .tile.type-mail .mode-btn[data-mode="mail"].active { background: var(--mail); border-color: var(--mail); color: var(--on-accent); }
+  .tile.type-bags .mode-btn[data-mode="bags"].active { background: var(--bags); border-color: var(--bags); color: var(--bags-on); }
+  .tile.type-catering .mode-btn[data-mode="catering"].active { background: var(--catering); border-color: var(--catering); color: var(--catering-on); }
+  .tile.type-cargo .mode-btn[data-mode="cargo"].active { background: var(--cargo); border-color: var(--cargo); color: var(--cargo-on); }
+  .tile.type-mail .mode-btn[data-mode="mail"].active { background: var(--mail); border-color: var(--mail); color: var(--mail-on); }
 
   /* gauge */
   .gauge-wrap { margin-top: 12px; }
@@ -506,6 +529,7 @@
     .tiles-grid { gap: 6px; }
     .tile { padding: 6px; }
     .mode-seg { grid-template-columns: repeat(2, 1fr); }
+    .mode-seg.seg-nobags { grid-template-columns: repeat(3, 1fr); }
   }
 
   /* ---------- CPM modal ---------- */
@@ -1113,21 +1137,29 @@
   function tileHTML(holdKey, code) {
     const id = pid(holdKey, code);
     const c = code.toUpperCase();
+    const isP = c.endsWith('P');
     const posClass = c === 'BULK' ? 'pos-bulk'
       : c.endsWith('L') ? 'pos-l'
-      : c.endsWith('P') ? 'pos-p'
+      : isP ? 'pos-p'
       : 'pos-r';
+    // Bags are never loaded in a pallet (P) position, so P tiles start on Cargo
+    // and don't offer a Bags button. All other positions default to Bags.
+    const defaultMode = isP ? 'cargo' : 'bags';
+    const defaultLabel = isP ? (code + ' Cargo WT') : (code + ' Bags');
+    const bagsBtn = isP ? '' :
+      `<button type="button" tabindex="-1" class="mode-btn active" data-mode="bags" onclick="setMode('${id}','bags')">Bags</button>`;
+    const segClass = isP ? 'mode-seg seg-nobags' : 'mode-seg';
     return `
-      <div class="tile ${posClass}" id="wrap-${id}">
+      <div class="tile ${posClass} ${isP ? 'type-cargo' : 'type-bags'}" id="wrap-${id}">
         <div class="tile-head">
-          <label id="lbl-${id}">${code} Bags</label>
+          <label id="lbl-${id}">${defaultLabel}</label>
           <span class="chip" id="calc-${id}">0 kg</span>
         </div>
         <input type="number" inputmode="decimal" id="${id}" placeholder="0" oninput="calculate()">
-        <div class="mode-seg" id="seg-${id}">
-          <button type="button" tabindex="-1" class="mode-btn active" data-mode="bags" onclick="setMode('${id}','bags')">Bags</button>
+        <div class="${segClass}" id="seg-${id}">
+          ${bagsBtn}
           <button type="button" tabindex="-1" class="mode-btn" data-mode="catering" onclick="setMode('${id}','catering')">Cat</button>
-          <button type="button" tabindex="-1" class="mode-btn" data-mode="cargo" onclick="setMode('${id}','cargo')">Cargo</button>
+          <button type="button" tabindex="-1" class="mode-btn${isP ? ' active' : ''}" data-mode="cargo" onclick="setMode('${id}','cargo')">Cargo</button>
           <button type="button" tabindex="-1" class="mode-btn" data-mode="mail" onclick="setMode('${id}','mail')">Mail</button>
         </div>
       </div>`;
@@ -1243,7 +1275,7 @@
     const wrap = document.getElementById('wrap-' + id);
     const code = id.split('-')[1].toUpperCase();
 
-    wrap.classList.remove('type-catering', 'type-cargo', 'type-mail');
+    wrap.classList.remove('type-bags', 'type-catering', 'type-cargo', 'type-mail');
 
     if (mode === 'catering') {
       wrap.classList.add('type-catering');
@@ -1255,6 +1287,7 @@
       input.readOnly = false;
       if (typeof input.value === 'string' && input.value.includes('kg')) input.value = '';
       if (mode === 'bags') {
+        wrap.classList.add('type-bags');
         label.textContent = code + ' Bags';
       } else if (mode === 'cargo') {
         wrap.classList.add('type-cargo');
@@ -1269,9 +1302,10 @@
 
   function getActiveMode(id) {
     const seg = document.getElementById('seg-' + id);
-    if (!seg) return 'bags';
+    const fallback = id.split('-')[1].toUpperCase().endsWith('P') ? 'cargo' : 'bags';
+    if (!seg) return fallback;
     const active = seg.querySelector('.mode-btn.active');
-    return active ? active.dataset.mode : 'bags';
+    return active ? active.dataset.mode : fallback;
   }
 
   // ---------------------------------------------------------------
@@ -1403,7 +1437,7 @@
       document.getElementById('target-' + def.key).value = '';
       def.positions[currentAircraft].forEach(code => {
         const id = pid(def.key, code);
-        setMode(id, 'bags');
+        setMode(id, code.toUpperCase().endsWith('P') ? 'cargo' : 'bags');
         document.getElementById(id).value = '';
       });
     });
