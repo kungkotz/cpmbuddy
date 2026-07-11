@@ -309,12 +309,6 @@
     letter-spacing: 0.3px;
     color: var(--text);
   }
-  .hold-note {
-    margin: 2px 0 12px 0;
-    font-size: 11.5px;
-    color: var(--text-dim);
-    font-style: italic;
-  }
 
   .status-badge {
     padding: 4px 9px;
@@ -427,6 +421,8 @@
     min-height: 30px;
   }
   .mode-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .m-abbr { display: none; }
+  .t-abbr { display: none; }
   .tile.type-bags .mode-btn[data-mode="bags"].active { background: var(--bags); border-color: var(--bags); color: var(--bags-on); }
   .tile.type-catering .mode-btn[data-mode="catering"].active { background: var(--catering); border-color: var(--catering); color: var(--catering-on); }
   .tile.type-cargo .mode-btn[data-mode="cargo"].active { background: var(--cargo); border-color: var(--cargo); color: var(--cargo-on); }
@@ -811,43 +807,78 @@
   }
 
   /* ---------- Wide screens (office ultrawides): aircraft layout ----------
-     Holds sit side by side like the aircraft seen from the left,
-     nose to the RIGHT: left→right = Hold 5, 4, 3, 2, 1.
+     The whole screen becomes the aircraft seen from its left side, nose to
+     the RIGHT:
+       · Holds run left→right as 5, 4, 3, 2, 1, each card's width
+         proportional to its number of sections (Hold 2 is the longest).
+       · Inside a hold, sections are columns, also nose-right: the lowest
+         section number (most forward) sits in the RIGHTMOST column.
+       · Within a section, L / P / R stack top→middle→bottom.
+       · Hold 5 (bulk) is a single tile vertically centered — the tail.
      Below the breakpoint everything stays in the stacked mobile layout. */
   .orientation-hint { display: none; }
 
   @media (min-width: 1500px) {
     main {
-      max-width: 2100px;
+      max-width: 2300px;
       display: grid;
-      /* Hold 5 (bulk) gets a deliberately narrower column, like the real
-         compartment; minmax(0,·) keeps columns from being blown apart by
-         content min-width. */
-      grid-template-columns: minmax(0, 0.55fr) repeat(4, minmax(0, 1fr));
-      gap: 14px;
-      align-items: start;
+      grid-template-columns: var(--hold-cols, minmax(0,1fr) minmax(0,3fr) minmax(0,3fr) minmax(0,6fr) minmax(0,3fr));
+      gap: 12px;
+      align-items: stretch;
       padding: 14px 20px 0;
     }
-    .hold-card { margin-bottom: 0; }
+    .hold-card { margin-bottom: 0; display: flex; flex-direction: column; }
     #card-h5 { grid-column: 1; grid-row: 1; }
     #card-h4 { grid-column: 2; grid-row: 1; }
     #card-h3 { grid-column: 3; grid-row: 1; }
     #card-h2 { grid-column: 4; grid-row: 1; }
     #card-h1 { grid-column: 5; grid-row: 1; }
 
-    /* Tiles are narrower in 5-across view: stack mode buttons 2×2
-       (3-across when there's no Bags button) so labels never overflow. */
-    .mode-seg { grid-template-columns: repeat(2, 1fr); }
-    .mode-seg.seg-nobags { grid-template-columns: repeat(3, 1fr); }
+    /* Equalize every card's chrome height so tile grids start at the same y:
+       single-line titles, compact single-line target label. */
+    .hold-head h2 { white-space: nowrap; }
+    .hold-head { min-height: 26px; }
+    .t-full { display: none; }
+    .t-abbr { display: inline; }
+    .target-row label { white-space: nowrap; }
 
-    .settings-wrap { max-width: 2100px; padding: 0 20px; }
-    .bottombar-row { max-width: 2100px; }
+    /* Sections as columns (reversed via --sec), L/P/R as rows.
+       All holds share the same 3 equal rows — cards stretch to equal height,
+       so row 2 (P) lines up across every hold, including BULK. */
+    .tiles-grid {
+      flex: 1;
+      grid-template-columns: repeat(var(--secs, 3), minmax(0, 1fr));
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      align-content: stretch;
+    }
+    .tile.pos-l { grid-column: var(--sec); grid-row: 1; }
+    .tile.pos-p { grid-column: var(--sec); grid-row: 2; }
+    .tile.pos-r { grid-column: var(--sec); grid-row: 3; }
+    /* Bulk: single tile on the P row → reads as the tapering tail. */
+    .tile.pos-bulk { grid-column: 1; grid-row: 2; }
+
+    /* Tiles are narrow in aircraft view: compact buttons, "Cargo"→"Crg",
+       2×2 button grids everywhere (Mail spans the bottom on P tiles). */
+    .m-full { display: none; }
+    .m-abbr { display: inline; }
+    .mode-btn { font-size: 9px; padding: 5px 1px; min-height: 26px; }
+    .mode-seg { grid-template-columns: repeat(2, 1fr); }
+    .mode-seg.seg-nobags { grid-template-columns: repeat(2, 1fr); }
+    .mode-seg.seg-nobags .mode-btn[data-mode="mail"] { grid-column: 1 / -1; }
+    .tile { padding: 6px; }
+    .tile label { font-size: 9px; }
+    .tile-head { flex-wrap: wrap; }
+    .tile input { font-size: 14px; padding: 7px 6px; }
+    .chip { font-size: 8.5px; }
+
+    .settings-wrap { max-width: 2300px; padding: 0 20px; }
+    .bottombar-row { max-width: 2300px; }
 
     .orientation-hint {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      max-width: 2100px;
+      max-width: 2300px;
       margin: 12px auto -6px;
       padding: 0 20px;
       font-size: 11px;
@@ -1142,7 +1173,6 @@
     {
       key: 'h1',
       title: 'HOLD 1',
-      note: { A390: 'Sections 11–13 (A330-900 configuration)', A333: 'Sections 11–12 (A330-300 configuration)' },
       positions: {
         A390: ['11L','11P','11R','12L','12P','12R','13L','13R'],
         A333: ['11L','11P','11R','12L','12P','12R']
@@ -1151,7 +1181,6 @@
     {
       key: 'h2',
       title: 'HOLD 2',
-      note: { A390: 'Sections 21–26 (standard fleet layout)', A333: 'Sections 21–26 (standard fleet layout)' },
       positions: {
         A390: ['21L','21P','21R','22L','22P','22R','23L','23P','23R','24L','24P','24R','25L','25R','26L','26R'],
         A333: ['21L','21P','21R','22L','22P','22R','23L','23P','23R','24L','24P','24R','25L','25R','26L','26R']
@@ -1160,7 +1189,6 @@
     {
       key: 'h3',
       title: 'HOLD 3',
-      note: { A390: 'Sections 32–34 (A330-900 configuration)', A333: 'Sections 31–34 (A330-300 configuration)' },
       positions: {
         A390: ['32L','32P','32R','33L','33P','33R','34L','34R'],
         A333: ['31L','31P','31R','32L','32P','32R','33L','33P','33R','34L','34R']
@@ -1169,7 +1197,6 @@
     {
       key: 'h4',
       title: 'HOLD 4',
-      note: { A390: 'Sections 41–43 (standard fleet layout)', A333: 'Sections 41–43 (standard fleet layout)' },
       positions: {
         A390: ['41L','41P','41R','42L','42P','42R','43L','43R'],
         A333: ['41L','41P','41R','42L','42P','42R','43L','43R']
@@ -1178,7 +1205,6 @@
     {
       key: 'h5',
       title: 'HOLD 5',
-      note: { A390: 'Loose bulk compartment', A333: 'Loose bulk compartment' },
       positions: { A390: ['BULK'], A333: ['BULK'] },
       isBulk: true
     }
@@ -1189,7 +1215,7 @@
   // ---------------------------------------------------------------
   function pid(holdKey, code) { return holdKey + '-' + code.toLowerCase(); }
 
-  function tileHTML(holdKey, code) {
+  function tileHTML(holdKey, code, secCol) {
     const id = pid(holdKey, code);
     const c = code.toUpperCase();
     const isP = c.endsWith('P');
@@ -1199,13 +1225,12 @@
       : 'pos-r';
     // Bags are never loaded in a pallet (P) position, so P tiles start on Cargo
     // and don't offer a Bags button. All other positions default to Bags.
-    const defaultMode = isP ? 'cargo' : 'bags';
     const defaultLabel = isP ? (code + ' Cargo WT') : (code + ' Bags');
     const bagsBtn = isP ? '' :
       `<button type="button" tabindex="-1" class="mode-btn active" data-mode="bags" onclick="setMode('${id}','bags')">Bags</button>`;
     const segClass = isP ? 'mode-seg seg-nobags' : 'mode-seg';
     return `
-      <div class="tile ${posClass} ${isP ? 'type-cargo' : 'type-bags'}" id="wrap-${id}">
+      <div class="tile ${posClass} ${isP ? 'type-cargo' : 'type-bags'}" id="wrap-${id}" style="--sec:${secCol}">
         <div class="tile-head">
           <label id="lbl-${id}">${defaultLabel}</label>
           <span class="chip" id="calc-${id}">0 kg</span>
@@ -1214,27 +1239,43 @@
         <div class="${segClass}" id="seg-${id}">
           ${bagsBtn}
           <button type="button" tabindex="-1" class="mode-btn" data-mode="catering" onclick="setMode('${id}','catering')">Cat</button>
-          <button type="button" tabindex="-1" class="mode-btn${isP ? ' active' : ''}" data-mode="cargo" onclick="setMode('${id}','cargo')">Cargo</button>
+          <button type="button" tabindex="-1" class="mode-btn${isP ? ' active' : ''}" data-mode="cargo" onclick="setMode('${id}','cargo')"><span class="m-full">Cargo</span><span class="m-abbr">Crg</span></button>
           <button type="button" tabindex="-1" class="mode-btn" data-mode="mail" onclick="setMode('${id}','mail')">Mail</button>
         </div>
       </div>`;
   }
 
+  // Ordered unique section prefixes for a hold, e.g. ['11','12','13'] or ['BULK'].
+  function sectionsOf(def) {
+    const secs = [];
+    def.positions[currentAircraft].forEach(code => {
+      const s = code === 'BULK' ? 'BULK' : code.slice(0, 2);
+      if (!secs.includes(s)) secs.push(s);
+    });
+    return secs;
+  }
+
   function holdCardHTML(def) {
     const codes = def.positions[currentAircraft];
-    const tiles = codes.map(c => tileHTML(def.key, c)).join('');
+    const secs = sectionsOf(def);
+    // Wide (aircraft) layout: nose is to the RIGHT, so the lowest section
+    // number goes in the rightmost column → reversed column index.
+    const colFor = code => {
+      const s = code === 'BULK' ? 'BULK' : code.slice(0, 2);
+      return secs.length - secs.indexOf(s);
+    };
+    const tiles = codes.map(c => tileHTML(def.key, c, colFor(c))).join('');
     return `
       <section class="hold-card" id="card-${def.key}">
         <div class="hold-head">
           <h2>${def.title}</h2>
           <span id="status-${def.key}" class="status-badge empty-badge">Empty</span>
         </div>
-        <p class="hold-note" id="note-${def.key}">${def.note[currentAircraft]}</p>
         <div class="target-row">
-          <label>Target loadsheet weight (kg)</label>
+          <label><span class="t-full">Target loadsheet weight (kg)</span><span class="t-abbr">Target (kg)</span></label>
           <input type="number" inputmode="decimal" id="target-${def.key}" placeholder="0" oninput="calculate()">
         </div>
-        <div class="tiles-grid" id="grid-${def.key}">
+        <div class="tiles-grid" id="grid-${def.key}" style="--secs:${secs.length}">
           ${tiles}
         </div>
         <div class="gauge-wrap">
@@ -1245,6 +1286,18 @@
           </div>
         </div>
       </section>`;
+  }
+
+  // Wide layout: hold card widths are proportional to their section counts,
+  // so the row of holds is shaped like the actual aircraft (Hold 2 longest).
+  function updateHoldColumns() {
+    const counts = ['h5', 'h4', 'h3', 'h2', 'h1'].map(k => {
+      const n = sectionsOf(HOLD_DEFS.find(d => d.key === k)).length;
+      // Hold 5 is one section but its card chrome needs more relative room.
+      return k === 'h5' ? 1.6 : n;
+    });
+    const cols = counts.map(n => `minmax(0, ${n}fr)`).join(' ');
+    document.getElementById('holds-root').style.setProperty('--hold-cols', cols);
   }
 
   function renderHold(key) {
@@ -1258,6 +1311,7 @@
   function renderAll() {
     const root = document.getElementById('holds-root');
     root.innerHTML = HOLD_DEFS.map(holdCardHTML).join('');
+    updateHoldColumns();
 
     const nav = document.getElementById('hold-nav');
     nav.innerHTML = HOLD_DEFS.map(def => `
@@ -1314,6 +1368,7 @@
     renderHold('h3');
     restoreHold('h1', snapH1);
     restoreHold('h3', snapH3);
+    updateHoldColumns();
     calculate();
   }
 
