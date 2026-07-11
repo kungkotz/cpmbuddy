@@ -809,6 +809,54 @@
     padding: 8px;
     border-radius: 7px;
   }
+
+  /* ---------- Wide screens (office ultrawides): aircraft layout ----------
+     Holds sit side by side like the aircraft seen from the left,
+     nose to the RIGHT: left→right = Hold 5, 4, 3, 2, 1.
+     Below the breakpoint everything stays in the stacked mobile layout. */
+  .orientation-hint { display: none; }
+
+  @media (min-width: 1500px) {
+    main {
+      max-width: 2100px;
+      display: grid;
+      /* Hold 5 (bulk) gets a deliberately narrower column, like the real
+         compartment; minmax(0,·) keeps columns from being blown apart by
+         content min-width. */
+      grid-template-columns: minmax(0, 0.55fr) repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+      padding: 14px 20px 0;
+    }
+    .hold-card { margin-bottom: 0; }
+    #card-h5 { grid-column: 1; grid-row: 1; }
+    #card-h4 { grid-column: 2; grid-row: 1; }
+    #card-h3 { grid-column: 3; grid-row: 1; }
+    #card-h2 { grid-column: 4; grid-row: 1; }
+    #card-h1 { grid-column: 5; grid-row: 1; }
+
+    /* Tiles are narrower in 5-across view: stack mode buttons 2×2
+       (3-across when there's no Bags button) so labels never overflow. */
+    .mode-seg { grid-template-columns: repeat(2, 1fr); }
+    .mode-seg.seg-nobags { grid-template-columns: repeat(3, 1fr); }
+
+    .settings-wrap { max-width: 2100px; padding: 0 20px; }
+    .bottombar-row { max-width: 2100px; }
+
+    .orientation-hint {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 2100px;
+      margin: 12px auto -6px;
+      padding: 0 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -886,6 +934,9 @@
     </label>
   </details>
 </div>
+
+<!-- Wide screens only: reminds that holds are laid out like the aircraft, nose right. -->
+<div class="orientation-hint"><span>◀ AFT · Hold 5</span><span>Hold 1 · FWD (nose) ▶</span></div>
 
 <!-- Hold cards render here from JS (renderAll → HOLD_DEFS). -->
 <main id="holds-root"></main>
