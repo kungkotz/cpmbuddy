@@ -872,7 +872,9 @@
     .chip { font-size: 8.5px; }
 
     .settings-wrap { max-width: 2300px; padding: 0 20px; }
-    .bottombar-row { max-width: 2300px; }
+    /* Keep the action buttons compact and centered rather than stretching
+       across the whole ultrawide. */
+    .bottombar-row { max-width: 640px; }
 
     .orientation-hint {
       display: flex;
@@ -1026,8 +1028,8 @@
       </div>
 
       <label class="check-row">
-        <input type="checkbox" id="cpm-include-catering" onchange="refreshUldList()">
-        Include catering-marked positions in the message
+        <input type="checkbox" id="cpm-include-empty">
+        Include empty positions in the message (shown as /N)
       </label>
 
       <div class="field">
@@ -1047,7 +1049,7 @@
     </div>
 
     <div id="cpm-result-view" style="display:none;">
-      <div class="cpm-legend">B = Bags · C = Cargo · M = Mail · K = Catering (informational, non-standard)</div>
+      <div class="cpm-legend">B = Bags · C = Cargo · M = Mail · K = Catering · /N = empty position</div>
       <div id="cpm-readable"></div>
       <div class="field">
         <label>Raw message (editable)</label>
@@ -1579,17 +1581,30 @@
     return n + cargoAddOn(code, id); // cargo / mail
   }
 
+  // Loaded positions across ALL holds, bulk included. Catering positions are
+  // always included — the container physically has something in it.
   function getActivePositionsForCpm() {
-    const includeCatering = document.getElementById('cpm-include-catering').checked;
     const rows = [];
     HOLD_DEFS.forEach(def => {
-      if (def.isBulk) return; // Hold 5 loose bulk carries no ULD
       def.positions[currentAircraft].forEach(code => {
         const id = pid(def.key, code);
         const mode = getActiveMode(id);
-        if (mode === 'catering' && !includeCatering) return;
         const weight = computePositionWeight(id, mode, code);
-        if (weight > 0) rows.push({ id, code, mode, weight });
+        if (weight > 0) rows.push({ id, code, mode, weight, isBulk: !!def.isBulk });
+      });
+    });
+    return rows;
+  }
+
+  // Positions with nothing in them (for the optional /N lines in the CPM).
+  function getEmptyPositionsForCpm() {
+    const rows = [];
+    HOLD_DEFS.forEach(def => {
+      def.positions[currentAircraft].forEach(code => {
+        const id = pid(def.key, code);
+        const mode = getActiveMode(id);
+        const weight = computePositionWeight(id, mode, code);
+        if (weight <= 0) rows.push({ id, code, isBulk: !!def.isBulk });
       });
     });
     return rows;
@@ -1639,7 +1654,7 @@
 
   function refreshUldList() {
     const list = document.getElementById('cpm-uld-list');
-    const rows = getActivePositionsForCpm();
+    const rows = getActivePositionsForCpm().filter(r => !r.isBulk);
     if (rows.length === 0) {
       list.innerHTML = '<div class="uld-empty">No loaded positions yet — enter weights in the reconciler above first.</div>';
       return;
@@ -1831,21 +1846,37 @@
     const dest = document.getElementById('hdr-dest').value.trim().toUpperCase();
     const callsign = document.getElementById('cpm-callsign').value.trim().toUpperCase();
     const si = document.getElementById('cpm-si').value.trim();
+    const includeEmpty = document.getElementById('cpm-include-empty').checked;
     const dateCode = formatCpmDate();
     const rows = getActivePositionsForCpm();
 
-    let raw = `CPM ${flight}/${dateCode}.${reg}`;
+    // Header: FLIGHT/DATE.REG (e.g. DK1234/11JUL.OYVKR)
+    let raw = `${flight}/${dateCode}.${reg}`;
     const readableRows = [];
 
     rows.forEach(r => {
-      const st = getUldState(r.id, r.code);
-      const uldNum = st.num.trim().toUpperCase();
-      const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
       const code = CONTENT_CODE[r.mode];
       const weight = Math.round(r.weight);
-      raw += `\n-${r.code}/${uld}/${dest}/${weight}/${code}`;
-      readableRows.push({ pos: r.code, content: CONTENT_LABEL[r.mode], uld, weight, dest });
+      if (r.isBulk) {
+        // Bulk compartment: position 5, no ULD segment.
+        raw += `\n-5/${dest}/${weight}/${code}`;
+        readableRows.push({ pos: '5 (bulk)', content: CONTENT_LABEL[r.mode], uld: '—', weight, dest });
+      } else {
+        const st = getUldState(r.id, r.code);
+        const uldNum = st.num.trim().toUpperCase();
+        const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
+        raw += `\n-${r.code}/${uld}/${dest}/${weight}/${code}`;
+        readableRows.push({ pos: r.code, content: CONTENT_LABEL[r.mode], uld, weight, dest });
+      }
     });
+
+    if (includeEmpty) {
+      getEmptyPositionsForCpm().forEach(r => {
+        const pos = r.isBulk ? '5' : r.code;
+        raw += `\n-${pos}/N`;
+        readableRows.push({ pos: r.isBulk ? '5 (bulk)' : r.code, content: 'Empty', uld: '—', weight: 0, dest: '—' });
+      });
+    }
 
     if (si) raw += `\nSI ${si.toUpperCase()}`;
 
@@ -1869,7 +1900,7 @@
   }
 
   function generateCpm() {
-    const missing = getActivePositionsForCpm().filter(r => !getUldState(r.id, r.code).num.trim()).length;
+    const missing = getActivePositionsForCpm().filter(r => !r.isBulk && !getUldState(r.id, r.code).num.trim()).length;
     if (missing > 0 && !confirm(missing + ' position' + (missing === 1 ? ' has' : 's have') + ' no ULD number and will show NIL. Generate anyway?')) {
       return;
     }
@@ -1883,7 +1914,7 @@
   function clearCpmFields() {
     document.getElementById('cpm-callsign').value = '';
     document.getElementById('cpm-si').value = '';
-    document.getElementById('cpm-include-catering').checked = false;
+    document.getElementById('cpm-include-empty').checked = false;
     Object.keys(uldState).forEach(k => delete uldState[k]);
     cpmSelectedDate = null;
     const disp = document.getElementById('cpm-date-display');
