@@ -69,7 +69,7 @@ Make every hold badge **green**, then hit **Generate CPM**.
 Fill in the date (defaults to today), the **ULD suffix** (`DK`), optional SI remarks, and a ULD number per position — types are automatic (L/R = AKE, P = PMC or PLA). The result shows a readable table plus the raw message:
 
 ```
-CPM DK1192/10JUL.OY-VKR
+DK1192/10JUL.OY-VKR
 -21P/PMC30142DK/AGP/1000/C
 -11P/PMC30143DK/AGP/1200/C
 -11L/AKE30144DK/AGP/845/B
