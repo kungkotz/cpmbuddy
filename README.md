@@ -28,6 +28,7 @@ A single-file web app for ground operations: reconcile per-position hold weights
 - 🔀 **Aircraft switching** that preserves your entries — only positions that don't exist on the other type are dropped
 - 🎨 **Color-coded content types** — purple Bags · brown Cargo · teal Catering · blue Mail, distinct from the green/red status colors in both themes
 - 🏷️ **ULD entry with zero-tap defaults** — L/R are always AKE; P positions toggle PMC/PLA (with "All P →" quick-set); airline suffix (e.g. `DK`) appended to every ULD ID
+- 📦 **Complete messages** — catering positions and the Hold 5 bulk compartment (`-5/…`, no ULD) are always in the CPM; empty positions can optionally be listed as `/N`
 - ✅ **Guard rails** — flight/reg/dest validated before the CPM opens (missing fields highlighted), warning if positions lack ULD numbers
 - 📤 **Copy or native Share** of the raw message; the text stays hand-editable
 
@@ -66,16 +67,19 @@ Type the hold's **target loadsheet weight**, then per position pick what it hold
 Make every hold badge **green**, then hit **Generate CPM**.
 
 ### 4 · Generate, edit, share
-Fill in the date (defaults to today), the **ULD suffix** (`DK`), optional SI remarks, and a ULD number per position — types are automatic (L/R = AKE, P = PMC or PLA). The result shows a readable table plus the raw message:
+Fill in the date (defaults to today), the **ULD suffix** (`DK`), optional SI remarks, and a ULD number per position — types are automatic (L/R = AKE, P = PMC or PLA; Hold 5 bulk needs no ULD). Tick **Include empty positions** if you want unloaded positions listed as `/N`. The result shows a readable table plus the raw message:
 
 ```
-DK1192/10JUL.OY-VKR
--21P/PMC30142DK/AGP/1000/C
+DK1192/11JUL.OY-VKR
+-11L/AKE30142DK/AGP/845/B
 -11P/PMC30143DK/AGP/1200/C
--11L/AKE30144DK/AGP/845/B
--11R/AKE30145DK/AGP/455/M
+-12L/AKE30144DK/AGP/455/K
+-5/AGP/260/B
+-13L/N
 SI TWO WHEELCHAIRS HOLD 1
 ```
+
+`B` bags · `C` cargo · `M` mail · `K` catering · `-5/…` the bulk compartment · `/N` empty position.
 
 Edit the text directly if needed, then **Copy** or **Share**. **Clear all** wipes everything for the next flight (settings and theme are kept).
 
