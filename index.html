@@ -34,6 +34,8 @@
     --mail: #3b82f6;
     --mail-bg: rgba(59,130,246,0.14);
     --mail-on: #ffffff;
+    --empty: #9aa5b3;
+    --empty-on: #10141a;
     --field-bg: #1c1c27;
     --field-border: rgba(255,255,255,0.14);
     --tile-bg: #17171f;
@@ -74,6 +76,8 @@
       --mail: #1d5fd0;
       --mail-bg: rgba(29,95,208,0.1);
       --mail-on: #ffffff;
+      --empty: #55606e;
+      --empty-on: #ffffff;
       --field-bg: #ffffff;
       --field-border: rgba(20,40,80,0.18);
       --tile-bg: #f5f7f5;
@@ -110,6 +114,8 @@
     --mail: #1d5fd0;
     --mail-bg: rgba(29,95,208,0.1);
     --mail-on: #ffffff;
+    --empty: #55606e;
+    --empty-on: #ffffff;
     --field-bg: #ffffff;
     --field-border: rgba(20,40,80,0.18);
     --tile-bg: #f5f7f5;
@@ -372,6 +378,7 @@
   .tile.type-catering { border-color: var(--catering); background: color-mix(in srgb, var(--catering) 14%, var(--card)); }
   .tile.type-cargo { border-color: var(--cargo); background: color-mix(in srgb, var(--cargo) 14%, var(--card)); }
   .tile.type-mail { border-color: var(--mail); background: color-mix(in srgb, var(--mail) 14%, var(--card)); }
+  .tile.type-empty { border-color: var(--empty); background: color-mix(in srgb, var(--empty) 14%, var(--card)); }
 
   .tile-head {
     display: flex;
@@ -390,6 +397,7 @@
   .tile.type-catering label { color: var(--catering); }
   .tile.type-cargo label { color: var(--cargo); }
   .tile.type-mail label { color: var(--mail); }
+  .tile.type-empty label { color: var(--empty); }
 
   .chip {
     font-size: 9.5px;
@@ -406,10 +414,10 @@
 
   .mode-seg {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 3px;
   }
-  .mode-seg.seg-nobags { grid-template-columns: repeat(3, 1fr); }
+  .mode-seg.seg-nobags { grid-template-columns: repeat(2, 1fr); }
   .mode-btn {
     background: var(--chip-bg);
     border: 1px solid var(--field-border);
@@ -427,6 +435,8 @@
   .tile.type-catering .mode-btn[data-mode="catering"].active { background: var(--catering); border-color: var(--catering); color: var(--catering-on); }
   .tile.type-cargo .mode-btn[data-mode="cargo"].active { background: var(--cargo); border-color: var(--cargo); color: var(--cargo-on); }
   .tile.type-mail .mode-btn[data-mode="mail"].active { background: var(--mail); border-color: var(--mail); color: var(--mail-on); }
+  .tile.type-empty .mode-btn[data-mode="empty"].active { background: var(--empty); border-color: var(--empty); color: var(--empty-on); }
+  .tile.type-empty input { background: color-mix(in srgb, var(--empty) 20%, var(--card)); color: var(--empty); font-weight: 700; }
 
   /* gauge */
   .gauge-wrap { margin-top: 12px; }
@@ -529,7 +539,7 @@
     .tiles-grid { gap: 6px; }
     .tile { padding: 6px; }
     .mode-seg { grid-template-columns: repeat(2, 1fr); }
-    .mode-seg.seg-nobags { grid-template-columns: repeat(3, 1fr); }
+    .mode-seg.seg-nobags { grid-template-columns: repeat(2, 1fr); }
   }
 
   /* ---------- CPM modal ---------- */
@@ -862,9 +872,8 @@
     .m-full { display: none; }
     .m-abbr { display: inline; }
     .mode-btn { font-size: 9px; padding: 5px 1px; min-height: 26px; }
-    .mode-seg { grid-template-columns: repeat(2, 1fr); }
+    .mode-seg { grid-template-columns: repeat(3, 1fr); }
     .mode-seg.seg-nobags { grid-template-columns: repeat(2, 1fr); }
-    .mode-seg.seg-nobags .mode-btn[data-mode="mail"] { grid-column: 1 / -1; }
     .tile { padding: 6px; }
     .tile label { font-size: 9px; }
     .tile-head { flex-wrap: wrap; }
@@ -1029,7 +1038,11 @@
 
       <label class="check-row">
         <input type="checkbox" id="cpm-include-empty">
-        Include empty positions in the message (shown as /N)
+        Include empty positions in the message (e.g. -21R/N)
+      </label>
+      <label class="check-row">
+        <input type="checkbox" id="cpm-no-header">
+        Skip the header line (flight/date/reg) — only the position lines
       </label>
 
       <div class="field">
@@ -1049,7 +1062,7 @@
     </div>
 
     <div id="cpm-result-view" style="display:none;">
-      <div class="cpm-legend">B = Bags · C = Cargo · M = Mail · K = Catering · /N = empty position</div>
+      <div class="cpm-legend">B = Bags · C = Cargo · M = Mail · K = Catering · X = empty container · N = empty position</div>
       <div id="cpm-readable"></div>
       <div class="field">
         <label>Raw message (editable)</label>
@@ -1230,6 +1243,8 @@
     const defaultLabel = isP ? (code + ' Cargo WT') : (code + ' Bags');
     const bagsBtn = isP ? '' :
       `<button type="button" tabindex="-1" class="mode-btn active" data-mode="bags" onclick="setMode('${id}','bags')">Bags</button>`;
+    const emptyBtn = c === 'BULK' ? '' :
+      `<button type="button" tabindex="-1" class="mode-btn" data-mode="empty" onclick="setMode('${id}','empty')"><span class="m-full">Empty</span><span class="m-abbr">MT</span></button>`;
     const segClass = isP ? 'mode-seg seg-nobags' : 'mode-seg';
     return `
       <div class="tile ${posClass} ${isP ? 'type-cargo' : 'type-bags'}" id="wrap-${id}" style="--sec:${secCol}">
@@ -1243,6 +1258,7 @@
           <button type="button" tabindex="-1" class="mode-btn" data-mode="catering" onclick="setMode('${id}','catering')">Cat</button>
           <button type="button" tabindex="-1" class="mode-btn${isP ? ' active' : ''}" data-mode="cargo" onclick="setMode('${id}','cargo')"><span class="m-full">Cargo</span><span class="m-abbr">Crg</span></button>
           <button type="button" tabindex="-1" class="mode-btn" data-mode="mail" onclick="setMode('${id}','mail')">Mail</button>
+          ${emptyBtn}
         </div>
       </div>`;
   }
@@ -1353,8 +1369,8 @@
       if (!el) return; // position doesn't exist in the new configuration
       const t = snap.tiles[code];
       if (t.mode !== 'bags') setMode(id, t.mode);
-      // catering values are recomputed by calculate(); only restore typed values
-      if (t.mode !== 'catering') el.value = t.value;
+      // catering/empty values are recomputed by calculate(); only restore typed values
+      if (t.mode !== 'catering' && t.mode !== 'empty') el.value = t.value;
     });
   }
 
@@ -1387,11 +1403,17 @@
     const wrap = document.getElementById('wrap-' + id);
     const code = id.split('-')[1].toUpperCase();
 
-    wrap.classList.remove('type-bags', 'type-catering', 'type-cargo', 'type-mail');
+    wrap.classList.remove('type-bags', 'type-catering', 'type-cargo', 'type-mail', 'type-empty');
 
     if (mode === 'catering') {
       wrap.classList.add('type-catering');
       label.textContent = code + ' Catering WT';
+      input.type = 'text';
+      input.readOnly = true;
+    } else if (mode === 'empty') {
+      // Empty container: only the ULD's own weight counts — computed, not typed.
+      wrap.classList.add('type-empty');
+      label.textContent = code + ' Empty ULD';
       input.type = 'text';
       input.readOnly = true;
     } else {
@@ -1479,6 +1501,13 @@
 
       if (mode === 'catering') {
         cateringIds.push(id);
+      } else if (mode === 'empty') {
+        // Empty container: the position's weight is just the ULD tare.
+        computed = bagsContainerWeight(code, id);
+        document.getElementById(id).value = computed + ' kg';
+        physicalSum += computed;
+        const chip = document.getElementById('calc-' + id);
+        if (chip) chip.textContent = computed + ' kg';
       } else {
         if (rawVal !== '' && !isNaN(rawVal) && parseFloat(rawVal) > 0) {
           const n = parseFloat(rawVal);
@@ -1564,8 +1593,8 @@
   // ---------------------------------------------------------------
   // CPM generation
   // ---------------------------------------------------------------
-  const CONTENT_CODE = { bags: 'B', cargo: 'C', mail: 'M', catering: 'K' };
-  const CONTENT_LABEL = { bags: 'Bags', cargo: 'Cargo', mail: 'Mail', catering: 'Catering' };
+  const CONTENT_CODE = { bags: 'B', cargo: 'C', mail: 'M', catering: 'K', empty: 'X' };
+  const CONTENT_LABEL = { bags: 'Bags', cargo: 'Cargo', mail: 'Mail', catering: 'Catering', empty: 'Empty ULD' };
 
   function computePositionWeight(id, mode, code) {
     const el = document.getElementById(id);
@@ -1574,6 +1603,7 @@
       const n = parseFloat((el.value || '').toString().replace('kg', '').trim());
       return isNaN(n) ? 0 : n;
     }
+    if (mode === 'empty') return bagsContainerWeight(code, id);
     const raw = el.value;
     if (raw === '' || isNaN(raw) || parseFloat(raw) <= 0) return 0;
     const n = parseFloat(raw);
@@ -1847,11 +1877,14 @@
     const callsign = document.getElementById('cpm-callsign').value.trim().toUpperCase();
     const si = document.getElementById('cpm-si').value.trim();
     const includeEmpty = document.getElementById('cpm-include-empty').checked;
+    const noHeader = document.getElementById('cpm-no-header').checked;
     const dateCode = formatCpmDate();
     const rows = getActivePositionsForCpm();
 
-    // Header: FLIGHT/DATE.REG (e.g. DK1234/11JUL.OYVKR)
-    let raw = `${flight}/${dateCode}.${reg}`;
+    // Header: FLIGHT/DATE.REG (e.g. DK1234/11JUL.OYVKR) — optional, since some
+    // systems prepend their own header and only want the position lines.
+    const parts = [];
+    if (!noHeader) parts.push(`${flight}/${dateCode}.${reg}`);
     const readableRows = [];
 
     rows.forEach(r => {
@@ -1859,13 +1892,13 @@
       const weight = Math.round(r.weight);
       if (r.isBulk) {
         // Bulk compartment: position 5, no ULD segment.
-        raw += `\n-5/${dest}/${weight}/${code}`;
+        parts.push(`-5/${dest}/${weight}/${code}`);
         readableRows.push({ pos: '5 (bulk)', content: CONTENT_LABEL[r.mode], uld: '—', weight, dest });
       } else {
         const st = getUldState(r.id, r.code);
         const uldNum = st.num.trim().toUpperCase();
         const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
-        raw += `\n-${r.code}/${uld}/${dest}/${weight}/${code}`;
+        parts.push(`-${r.code}/${uld}/${dest}/${weight}/${code}`);
         readableRows.push({ pos: r.code, content: CONTENT_LABEL[r.mode], uld, weight, dest });
       }
     });
@@ -1873,12 +1906,14 @@
     if (includeEmpty) {
       getEmptyPositionsForCpm().forEach(r => {
         const pos = r.isBulk ? '5' : r.code;
-        raw += `\n-${pos}/N`;
-        readableRows.push({ pos: r.isBulk ? '5 (bulk)' : r.code, content: 'Empty', uld: '—', weight: 0, dest: '—' });
+        parts.push(`-${pos}/N`);
+        readableRows.push({ pos: r.isBulk ? '5 (bulk)' : r.code, content: 'Empty position', uld: '—', weight: 0, dest: '—' });
       });
     }
 
-    if (si) raw += `\nSI ${si.toUpperCase()}`;
+    if (si) parts.push(`SI ${si.toUpperCase()}`);
+
+    const raw = parts.join('\n');
 
     return { raw, readableRows, totalWeight: rows.reduce((s, r) => s + r.weight, 0) };
   }
@@ -1915,6 +1950,7 @@
     document.getElementById('cpm-callsign').value = '';
     document.getElementById('cpm-si').value = '';
     document.getElementById('cpm-include-empty').checked = false;
+    document.getElementById('cpm-no-header').checked = false;
     Object.keys(uldState).forEach(k => delete uldState[k]);
     cpmSelectedDate = null;
     const disp = document.getElementById('cpm-date-display');
