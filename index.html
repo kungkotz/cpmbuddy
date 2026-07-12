@@ -853,19 +853,22 @@
     .target-row label { white-space: nowrap; }
 
     /* Sections as columns (reversed via --sec), L/P/R as rows.
+       The grid uses 2 subcolumns per section so P tiles can span 1.5
+       sections — pallet bays tile the full hold length, just like real
+       PMC footprints (4 bays = 6 sections in Hold 2).
        All holds share the same 3 equal rows — cards stretch to equal height,
        so row 2 (P) lines up across every hold, including BULK. */
     .tiles-grid {
       flex: 1;
-      grid-template-columns: repeat(var(--secs, 3), minmax(0, 1fr));
+      grid-template-columns: repeat(var(--subs, 6), minmax(0, 1fr));
       grid-template-rows: repeat(3, minmax(0, 1fr));
       align-content: stretch;
     }
-    .tile.pos-l { grid-column: var(--sec); grid-row: 1; }
-    .tile.pos-p { grid-column: var(--sec); grid-row: 2; }
-    .tile.pos-r { grid-column: var(--sec); grid-row: 3; }
+    .tile.pos-l { grid-column: calc(var(--sec) * 2 - 1) / span 2; grid-row: 1; }
+    .tile.pos-p { grid-column: var(--pstart) / span var(--pspan); grid-row: 2; }
+    .tile.pos-r { grid-column: calc(var(--sec) * 2 - 1) / span 2; grid-row: 3; }
     /* Bulk: single tile on the P row → reads as the tapering tail. */
-    .tile.pos-bulk { grid-column: 1; grid-row: 2; }
+    .tile.pos-bulk { grid-column: 1 / -1; grid-row: 2; }
 
     /* Tiles are narrow in aircraft view: compact buttons, "Cargo"→"Crg",
        2×2 button grids everywhere (Mail spans the bottom on P tiles). */
@@ -1230,7 +1233,7 @@
   // ---------------------------------------------------------------
   function pid(holdKey, code) { return holdKey + '-' + code.toLowerCase(); }
 
-  function tileHTML(holdKey, code, secCol) {
+  function tileHTML(holdKey, code, styleVars) {
     const id = pid(holdKey, code);
     const c = code.toUpperCase();
     const isP = c.endsWith('P');
@@ -1247,7 +1250,7 @@
       `<button type="button" tabindex="-1" class="mode-btn" data-mode="empty" onclick="setMode('${id}','empty')"><span class="m-full">Empty</span><span class="m-abbr">MT</span></button>`;
     const segClass = isP ? 'mode-seg seg-nobags' : 'mode-seg';
     return `
-      <div class="tile ${posClass} ${isP ? 'type-cargo' : 'type-bags'}" id="wrap-${id}" style="--sec:${secCol}">
+      <div class="tile ${posClass} ${isP ? 'type-cargo' : 'type-bags'}" id="wrap-${id}" style="${styleVars}">
         <div class="tile-head">
           <label id="lbl-${id}">${defaultLabel}</label>
           <span class="chip" id="calc-${id}">0 kg</span>
@@ -1276,13 +1279,44 @@
   function holdCardHTML(def) {
     const codes = def.positions[currentAircraft];
     const secs = sectionsOf(def);
+    const subs = secs.length * 2; // 2 subcolumns per section for the wide grid
+
     // Wide (aircraft) layout: nose is to the RIGHT, so the lowest section
     // number goes in the rightmost column → reversed column index.
-    const colFor = code => {
+    const secColFor = code => {
       const s = code === 'BULK' ? 'BULK' : code.slice(0, 2);
       return secs.length - secs.indexOf(s);
     };
-    const tiles = codes.map(c => tileHTML(def.key, c, colFor(c))).join('');
+
+    // P positions are pallet bays: together they tile the whole hold length
+    // (4 PMC bays = 6 sections in Hold 2, i.e. 1.5 sections each). Compute a
+    // start/span in subcolumns per P tile, laid contiguously left→right in
+    // reversed (aft→fwd) order to match the section columns.
+    const pSecsDesc = secs.filter(s => codes.includes(s + 'P'))
+                          .sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
+    const pLayout = {};
+    if (pSecsDesc.length) {
+      const nP = pSecsDesc.length;
+      const base = Math.floor(subs / nP);
+      let rem = subs - base * nP;
+      let cursor = 1;
+      pSecsDesc.forEach((s, i) => {
+        const span = base + (i < rem ? 1 : 0);
+        pLayout[s] = { start: cursor, span };
+        cursor += span;
+      });
+    }
+
+    const styleFor = code => {
+      if (code === 'BULK') return '';
+      if (code.endsWith('P')) {
+        const p = pLayout[code.slice(0, 2)];
+        return `--pstart:${p.start}; --pspan:${p.span}`;
+      }
+      return `--sec:${secColFor(code)}`;
+    };
+
+    const tiles = codes.map(c => tileHTML(def.key, c, styleFor(c))).join('');
     return `
       <section class="hold-card" id="card-${def.key}">
         <div class="hold-head">
@@ -1293,7 +1327,7 @@
           <label><span class="t-full">Target loadsheet weight (kg)</span><span class="t-abbr">Target (kg)</span></label>
           <input type="number" inputmode="decimal" id="target-${def.key}" placeholder="0" oninput="calculate()">
         </div>
-        <div class="tiles-grid" id="grid-${def.key}" style="--secs:${secs.length}">
+        <div class="tiles-grid" id="grid-${def.key}" style="--secs:${secs.length}; --subs:${subs}">
           ${tiles}
         </div>
         <div class="gauge-wrap">
@@ -1878,34 +1912,87 @@
     if (!noHeader) parts.push(`${flight}/${dateCode}.${reg}`);
     const readableRows = [];
 
-    // One pass over every position in aircraft order (holds 1→5, sections
-    // ascending, L/P/R). Loaded and empty positions interleave in that order,
-    // so -5 (bulk) is naturally last — followed only by the SI line if any.
+    // ---- Physical footprint of loaded pallets --------------------------
+    // A PMC is long enough to cover the L/R container positions of its own
+    // section AND the next section (1 PMC = 4 AKE positions; 2 adjacent
+    // PMCs = 6). A PLA (half pallet) covers only its own section's L/R.
+    // Positions under a pallet are neither loaded nor empty — they simply
+    // don't appear in the message.
+    const blocked = new Set();
+    rows.forEach(r => {
+      if (r.isBulk || !r.code.endsWith('P')) return;
+      const s = parseInt(r.code, 10);
+      const type = getUldState(r.id, r.code).type;
+      blocked.add(s + 'L'); blocked.add(s + 'R');
+      if (type === 'PMC') { blocked.add((s + 1) + 'L'); blocked.add((s + 1) + 'R'); }
+    });
+
     const loadedById = {};
     rows.forEach(r => { loadedById[r.id] = r; });
 
+    const emitLoaded = r => {
+      const code = CONTENT_CODE[r.mode];
+      const weight = Math.round(r.weight);
+      if (r.isBulk) {
+        // Bulk compartment: position 5, no ULD segment.
+        parts.push(`-5/${dest}/${weight}/${code}`);
+        readableRows.push({ pos: '5 (bulk)', content: CONTENT_LABEL[r.mode], uld: '—', weight, dest });
+      } else {
+        const st = getUldState(r.id, r.code);
+        const uldNum = st.num.trim().toUpperCase();
+        const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
+        parts.push(`-${r.code}/${uld}/${dest}/${weight}/${code}`);
+        readableRows.push({ pos: r.code, content: CONTENT_LABEL[r.mode], uld, weight, dest });
+      }
+    };
+    const emitEmpty = pos => {
+      parts.push(`-${pos}/N`);
+      readableRows.push({ pos, content: 'Empty position', uld: '—', weight: 0, dest: '—' });
+    };
+
+    // One pass over the aircraft in order (holds 1→5, sections ascending,
+    // L/P/R), section by section so fully-empty sections collapse to one
+    // nP/N line. -5 (bulk) is naturally last, followed only by SI.
     HOLD_DEFS.forEach(def => {
-      def.positions[currentAircraft].forEach(posCode => {
-        const id = pid(def.key, posCode);
-        const r = loadedById[id];
-        if (r) {
-          const code = CONTENT_CODE[r.mode];
-          const weight = Math.round(r.weight);
-          if (r.isBulk) {
-            // Bulk compartment: position 5, no ULD segment.
-            parts.push(`-5/${dest}/${weight}/${code}`);
-            readableRows.push({ pos: '5 (bulk)', content: CONTENT_LABEL[r.mode], uld: '—', weight, dest });
-          } else {
-            const st = getUldState(r.id, r.code);
-            const uldNum = st.num.trim().toUpperCase();
-            const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
-            parts.push(`-${r.code}/${uld}/${dest}/${weight}/${code}`);
-            readableRows.push({ pos: r.code, content: CONTENT_LABEL[r.mode], uld, weight, dest });
+      // Group this hold's positions into ordered sections.
+      const sections = [];
+      def.positions[currentAircraft].forEach(code => {
+        const s = code === 'BULK' ? 'BULK' : code.slice(0, 2);
+        let sec = sections.find(x => x.s === s);
+        if (!sec) { sec = { s, codes: [] }; sections.push(sec); }
+        sec.codes.push(code);
+      });
+
+      sections.forEach(sec => {
+        const loadedHere = sec.codes.filter(c => loadedById[pid(def.key, c)]);
+        // Emit loaded lines in position order.
+        sec.codes.forEach(c => {
+          const r = loadedById[pid(def.key, c)];
+          if (r) emitLoaded(r);
+        });
+        if (!includeEmpty) return;
+
+        if (sec.s === 'BULK') {
+          if (loadedHere.length === 0) emitEmpty('5');
+          return;
+        }
+
+        const hasP = sec.codes.some(c => c.endsWith('P'));
+        const emptyUnblocked = sec.codes.filter(c =>
+          !loadedById[pid(def.key, c)] && !blocked.has(c));
+
+        if (loadedHere.length === 0) {
+          // Whole section empty: one nP/N line says it all (when the section
+          // has a P position). Sections fully covered by a neighboring PMC
+          // have no unblocked positions and produce nothing.
+          if (hasP && emptyUnblocked.length > 0) {
+            emitEmpty(sec.s + 'P');
+          } else if (!hasP) {
+            emptyUnblocked.forEach(c => emitEmpty(c));
           }
-        } else if (includeEmpty) {
-          const pos = posCode === 'BULK' ? '5' : posCode;
-          parts.push(`-${pos}/N`);
-          readableRows.push({ pos: posCode === 'BULK' ? '5 (bulk)' : posCode, content: 'Empty position', uld: '—', weight: 0, dest: '—' });
+        } else {
+          // Partially loaded: list each remaining free position individually.
+          emptyUnblocked.forEach(c => emitEmpty(c));
         }
       });
     });
