@@ -1974,49 +1974,73 @@
     };
 
     // One pass over the aircraft in order (holds 1→5, sections ascending,
-    // L/P/R), section by section so fully-empty sections collapse to one
-    // nP/N line. -5 (bulk) is naturally last, followed only by SI.
+    // L/P/R). Empty floor space is described in PALLET BAY terms, using the
+    // same coverage map the app draws: each hold's P bays tile its entire
+    // length (11P+12P cover 11–13, 21P–24P cover 21–26, 32P+33P cover
+    // 32–34, 41P+42P cover 41–43). An empty L/R line is therefore only
+    // written where its floor ISN'T covered by an emitted free bay.
+    // -5 (bulk) is naturally last, followed only by SI.
     HOLD_DEFS.forEach(def => {
-      // Group this hold's positions into ordered sections.
-      const sections = [];
-      def.positions.forEach(code => {
-        const s = code === 'BULK' ? 'BULK' : code.slice(0, 2);
-        let sec = sections.find(x => x.s === s);
-        if (!sec) { sec = { s, codes: [] }; sections.push(sec); }
-        sec.codes.push(code);
-      });
+      if (def.isBulk) {
+        const r = loadedById[pid(def.key, 'BULK')];
+        if (r) emitLoaded(r);
+        else if (includeEmpty) emitEmpty('5');
+        return;
+      }
 
-      sections.forEach(sec => {
-        const loadedHere = sec.codes.filter(c => loadedById[pid(def.key, c)]);
-        // Emit loaded lines in position order.
-        sec.codes.forEach(c => {
-          const r = loadedById[pid(def.key, c)];
-          if (r) emitLoaded(r);
+      const secList = sectionsOf(def);              // e.g. ['41','42','43']
+      const isLoaded = c => !!loadedById[pid(def.key, c)];
+
+      // Bay tiling in subcolumn units (2 per section), same math as the
+      // visual layout: the bays split the hold length evenly between them.
+      const baySecs = secList.filter(s => def.positions.includes(s + 'P'));
+      const subsTotal = secList.length * 2;
+      const bays = [];
+      if (baySecs.length) {
+        const base = Math.floor(subsTotal / baySecs.length);
+        const rem = subsTotal - base * baySecs.length;
+        let cursor = 1;
+        baySecs.forEach((s, i) => {
+          const span = base + (i >= baySecs.length - rem ? 1 : 0);
+          bays.push({ s, start: cursor, end: cursor + span - 1 });
+          cursor += span;
+        });
+      }
+      const secRange = k => [2 * k + 1, 2 * k + 2];
+      const overlaps = (b, k) => { const [lo, hi] = secRange(k); return !(hi < b.start || lo > b.end); };
+
+      // A bay is FREE (and gets a /N line) only if the bay itself is
+      // unloaded AND nothing is loaded in the L/R positions under its span.
+      const bayFree = {};
+      bays.forEach(b => {
+        const lrLoadedUnder = secList.some((s, k) =>
+          overlaps(b, k) && (isLoaded(s + 'L') || isLoaded(s + 'R')));
+        bayFree[b.s] = !isLoaded(b.s + 'P') && !lrLoadedUnder;
+      });
+      // An empty L/R is covered (→ omitted) if every bay over its floor is free.
+      const lrCovered = k => {
+        const over = bays.filter(b => overlaps(b, k));
+        return over.length > 0 && over.every(b => bayFree[b.s]);
+      };
+
+      secList.forEach((s, k) => {
+        // Loaded lines in L, P, R order.
+        ['L', 'P', 'R'].forEach(sfx => {
+          const c = s + sfx;
+          if (def.positions.includes(c) && isLoaded(c)) emitLoaded(loadedById[pid(def.key, c)]);
         });
         if (!includeEmpty) return;
 
-        if (sec.s === 'BULK') {
-          if (loadedHere.length === 0) emitEmpty('5');
-          return;
+        if (def.positions.includes(s + 'P') && !isLoaded(s + 'P') && bayFree[s]) {
+          emitEmpty(s + 'P');
         }
-
-        const hasP = sec.codes.some(c => c.endsWith('P'));
-        const emptyUnblocked = sec.codes.filter(c =>
-          !loadedById[pid(def.key, c)] && !blocked.has(c));
-
-        if (loadedHere.length === 0) {
-          // Whole section empty: one nP/N line says it all (when the section
-          // has a P position). Sections fully covered by a neighboring PMC
-          // have no unblocked positions and produce nothing.
-          if (hasP && emptyUnblocked.length > 0) {
-            emitEmpty(sec.s + 'P');
-          } else if (!hasP) {
-            emptyUnblocked.forEach(c => emitEmpty(c));
-          }
-        } else {
-          // Partially loaded: list each remaining free position individually.
-          emptyUnblocked.forEach(c => emitEmpty(c));
-        }
+        ['L', 'R'].forEach(sfx => {
+          const c = s + sfx;
+          if (!def.positions.includes(c) || isLoaded(c)) return;
+          if (blocked.has(c)) return;   // under a loaded pallet's footprint
+          if (lrCovered(k)) return;     // floor already described by free bay(s)
+          emitEmpty(c);
+        });
       });
     });
 
