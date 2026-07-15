@@ -87,6 +87,15 @@ DK1192/14JUL.OY-VKP
 **7 · Clear all** for the next flight. Settings and theme are kept.
 
 > A printable PDF guide is in [`docs/CPMBuddy_Guide.pdf`](docs/CPMBuddy_Guide.pdf).
+---
+
+## Sending via Notis
+
+Since Notis already fills in the flight number, date and registration, **always tick "Skip the header line"** in CPM Buddy before copying — you only need the position lines.
+
+The workflow: **CPM Buddy** (copy with header skipped) → **Notis**: CPM → Flight → View → cursor at end of header → **Enter** → **Alt + I** → **F3** → **Send**.
+
+Step-by-step instructions with screenshots are in the [PDF guide](docs/CPMBuddy_Guide.pdf).
 
 ---
 
