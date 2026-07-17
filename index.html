@@ -1720,6 +1720,15 @@
     if (e.key === 'Enter') { e.preventDefault(); wizNext(); }
   }
 
+  // The date step has no text input, so catch Enter globally while it's shown.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (!document.body.classList.contains('wizard-active')) return;
+    if (wizStep !== 3) return;
+    e.preventDefault();
+    wizNext();
+  });
+
   function wizNext() {
     if (wizStep < 3) {
       const c = WIZ_CHECKS[wizStep];
@@ -2125,11 +2134,19 @@
     calculate();
   }
 
-  // Back to the start page WITHOUT losing anything — re-entering via the
-  // plane reopens the wizard prefilled with the current flight info.
+  // Back to the previous step — the wizard's date page, prefilled with the
+  // current flight. From there, Back walks dest → reg → flight → start page.
   function goBack() {
     closeCpmModal();
-    document.body.classList.add('home-active');
+    document.getElementById('wiz-flight').value = document.getElementById('hdr-flight').value;
+    document.getElementById('wiz-reg').value = document.getElementById('hdr-reg').value;
+    document.getElementById('wiz-dest').value = document.getElementById('hdr-dest').value;
+    const base = cpmSelectedDate || new Date();
+    wizSelectedDate = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+    wizCalYear = wizSelectedDate.getFullYear();
+    wizCalMonth = wizSelectedDate.getMonth();
+    document.body.classList.add('wizard-active');
+    wizShowStep(3);
   }
 
   // Logo tap = hard reset. The only ways to erase everything are this
