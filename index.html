@@ -1277,7 +1277,7 @@
   <div class="bottombar-row">
     <button class="clear-btn" onclick="goBack()">← Go back</button>
     <button class="clear-btn" onclick="clearAllFields()">Clear all fields</button>
-    <button class="clear-btn cpm-launch-btn" onclick="openCpmModal()">Generate CPM</button>
+    <button class="clear-btn cpm-launch-btn" onclick="openCpmModal()">Proceed →</button>
   </div>
 </div>
 
@@ -2439,6 +2439,10 @@
   }
 
   function openCpmModal() {
+    // Checked here, at Proceed, rather than at Generate: the conflicting
+    // positions are on this page, so they can be highlighted and scrolled
+    // to while they're still visible.
+    if (!validateFootprints()) return;
     document.getElementById('cpm-overlay').classList.add('open');
     document.getElementById('cpm-form-view').style.display = '';
     document.getElementById('cpm-result-view').style.display = 'none';
@@ -2706,7 +2710,6 @@
 
   function generateCpm() {
     if (!validateFlightHeader()) return;
-    if (!validateFootprints()) return;
     const missing = getActivePositionsForCpm().filter(r => !r.isBulk && !getUldState(r.id, r.code).num.trim()).length;
     if (missing > 0 && !confirm(missing + ' position' + (missing === 1 ? ' has' : 's have') + ' no ULD number and will show NIL. Generate anyway?')) {
       return;
