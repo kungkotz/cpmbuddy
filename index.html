@@ -1717,12 +1717,13 @@
   }
 
   function wizKeydown(e) {
-    if (e.key === 'Enter') { e.preventDefault(); wizNext(); }
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); wizNext(); }
   }
 
   // The date step has no text input, so catch Enter globally while it's shown.
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
+    if (e.target && e.target.tagName === 'INPUT') return; // inputs handle their own Enter
     if (!document.body.classList.contains('wizard-active')) return;
     if (wizStep !== 3) return;
     e.preventDefault();
