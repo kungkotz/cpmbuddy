@@ -2297,6 +2297,115 @@
     }).join('');
   }
 
+  // ---------------------------------------------------------------
+  // Hold geometry — the single source of truth for what floor a pallet
+  // bay occupies. Bays tile each hold's length evenly in subcolumn
+  // units (2 subs per station, 3 subs per bay = 1.5 stations), exactly
+  // as the wide layout draws them. A bay makes every station it touches
+  // — even by half — unusable for AKEs, so one pallet always costs
+  // 4 AKEs, and two pallets starting at a station boundary cost 6.
+  // Bays are staggered, so a bay does NOT always sit on the station of
+  // the same number: in Hold 2, 23P lies over 24/25 and 24P over 25/26.
+  // ---------------------------------------------------------------
+  function holdGeometry(def) {
+    const secList = sectionsOf(def);
+    const baySecs = secList.filter(s => def.positions.includes(s + 'P'));
+    const bays = {};
+    if (baySecs.length) {
+      const subsTotal = secList.length * 2;
+      const base = Math.floor(subsTotal / baySecs.length);
+      const rem = subsTotal - base * baySecs.length;
+      let cursor = 1;
+      baySecs.forEach((s, i) => {
+        const span = base + (i >= baySecs.length - rem ? 1 : 0);
+        bays[s] = { start: cursor, end: cursor + span - 1 };
+        cursor += span;
+      });
+    }
+    // Stations whose L/R positions a bay at `s` occupies. A PLA is only
+    // one station long, so it takes just the front of its bay.
+    const covers = (s, type) => {
+      const b = bays[s];
+      if (!b) return [];
+      const end = type === 'PLA' ? b.start + 1 : b.end;
+      return secList.filter((_, k) => !((2 * k + 2) < b.start || (2 * k + 1) > end));
+    };
+    const bayType = s => getUldState(pid(def.key, s + 'P'), s + 'P').type;
+    return { secList, baySecs, bays, covers, bayType };
+  }
+
+  // Every L/R position that a LOADED pallet physically sits on. These
+  // can be neither loaded nor listed as empty — they don't exist in this
+  // configuration.
+  function blockedByLoadedPallets(isLoaded) {
+    const blocked = new Set();
+    HOLD_DEFS.forEach(def => {
+      if (def.isBulk) return;
+      const geo = holdGeometry(def);
+      geo.baySecs.forEach(s => {
+        if (!isLoaded(def, s + 'P')) return;
+        geo.covers(s, geo.bayType(s)).forEach(x => { blocked.add(x + 'L'); blocked.add(x + 'R'); });
+      });
+    });
+    return blocked;
+  }
+
+  // A pallet and a container cannot share a station. Reported when the
+  // CPM is generated rather than blocking entry, so the loading can be
+  // typed in any order.
+  function findFootprintConflicts() {
+    const loadedIds = new Set(getActivePositionsForCpm().map(r => r.id));
+    const isLoaded = (def, code) => loadedIds.has(pid(def.key, code));
+    const conflicts = [];
+    HOLD_DEFS.forEach(def => {
+      if (def.isBulk) return;
+      const geo = holdGeometry(def);
+      geo.baySecs.forEach(s => {
+        if (!isLoaded(def, s + 'P')) return;
+        const type = geo.bayType(s);
+        const hits = [];
+        geo.covers(s, type).forEach(x => {
+          ['L', 'R'].forEach(sfx => {
+            const c = x + sfx;
+            if (def.positions.includes(c) && isLoaded(def, c)) hits.push(c);
+          });
+        });
+        if (hits.length) {
+          conflicts.push({
+            pallet: s + 'P', type, hits,
+            stations: geo.covers(s, type),
+            firstId: pid(def.key, hits[0])
+          });
+        }
+      });
+    });
+    return conflicts;
+  }
+
+  function validateFootprints() {
+    document.querySelectorAll('input.field-error').forEach(el => {
+      if (/^h\d-/.test(el.id)) el.classList.remove('field-error');
+    });
+    const conflicts = findFootprintConflicts();
+    if (!conflicts.length) return true;
+    const lines = conflicts.map(c =>
+      `• ${c.type} at ${c.pallet} covers station${c.stations.length === 1 ? '' : 's'} ` +
+      `${c.stations.join(' and ')} — but ${c.hits.join(' and ')} ${c.hits.length === 1 ? 'is' : 'are'} loaded`);
+    conflicts.forEach(c => c.hits.forEach(h => {
+      const el = document.getElementById(c.firstId.split('-')[0] + '-' + h.toLowerCase());
+      if (el) el.classList.add('field-error');
+    }));
+    alert('Impossible loading — a pallet and a container cannot share the same floor:\n\n' +
+      lines.join('\n') +
+      '\n\nRemove the container, or move the pallet to another bay.');
+    const first = document.getElementById(conflicts[0].firstId);
+    if (first) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      first.focus({ preventScroll: true });
+    }
+    return false;
+  }
+
   function clearFieldError(el) {
     el.classList.remove('field-error');
   }
@@ -2488,23 +2597,13 @@
     if (!noHeader) parts.push(`${flight}/${dateCode}.${reg}`);
     const readableRows = [];
 
-    // ---- Physical footprint of loaded pallets --------------------------
-    // A PMC is long enough to cover the L/R container positions of its own
-    // section AND the next section (1 PMC = 4 AKE positions; 2 adjacent
-    // PMCs = 6). A PLA (half pallet) covers only its own section's L/R.
-    // Positions under a pallet are neither loaded nor empty — they simply
-    // don't appear in the message.
-    const blocked = new Set();
-    rows.forEach(r => {
-      if (r.isBulk || !r.code.endsWith('P')) return;
-      const s = parseInt(r.code, 10);
-      const type = getUldState(r.id, r.code).type;
-      blocked.add(s + 'L'); blocked.add(s + 'R');
-      if (type === 'PMC') { blocked.add((s + 1) + 'L'); blocked.add((s + 1) + 'R'); }
-    });
-
     const loadedById = {};
     rows.forEach(r => { loadedById[r.id] = r; });
+
+    // ---- Physical footprint of loaded pallets --------------------------
+    // Positions under a pallet are neither loaded nor empty — they simply
+    // don't appear in the message. See holdGeometry() for the tiling.
+    const blocked = blockedByLoadedPallets((def, code) => !!loadedById[pid(def.key, code)]);
 
     const emitLoaded = r => {
       const code = CONTENT_CODE[r.mode];
@@ -2541,42 +2640,24 @@
         return;
       }
 
-      const secList = sectionsOf(def);              // e.g. ['41','42','43']
+      const secList = sectionsOf(def);
       const isLoaded = c => !!loadedById[pid(def.key, c)];
+      const geo = holdGeometry(def);
+      const baySecs = geo.baySecs;
 
-      // Bay tiling in subcolumn units (2 per section), same math as the
-      // visual layout: the bays split the hold length evenly between them.
-      const baySecs = secList.filter(s => def.positions.includes(s + 'P'));
-      const subsTotal = secList.length * 2;
-      const bays = [];
-      if (baySecs.length) {
-        const base = Math.floor(subsTotal / baySecs.length);
-        const rem = subsTotal - base * baySecs.length;
-        let cursor = 1;
-        baySecs.forEach((s, i) => {
-          const span = base + (i >= baySecs.length - rem ? 1 : 0);
-          bays.push({ s, start: cursor, end: cursor + span - 1 });
-          cursor += span;
-        });
-      }
-      const secRange = k => [2 * k + 1, 2 * k + 2];
-      const overlaps = (b, k) => { const [lo, hi] = secRange(k); return !(hi < b.start || lo > b.end); };
-
-      // A bay is FREE (and gets a /N line) only if the bay itself is
-      // unloaded AND nothing is loaded in the L/R positions under its span.
+      // What floor each bay sits on, and whether it's actually free.
+      const bayCovers = {};
       const bayFree = {};
-      bays.forEach(b => {
-        const lrLoadedUnder = secList.some((s, k) =>
-          overlaps(b, k) && (isLoaded(s + 'L') || isLoaded(s + 'R')));
-        bayFree[b.s] = !isLoaded(b.s + 'P') && !lrLoadedUnder;
+      baySecs.forEach(s => {
+        bayCovers[s] = geo.covers(s, geo.bayType(s));
+        bayFree[s] = !isLoaded(s + 'P') &&
+          !bayCovers[s].some(x => isLoaded(x + 'L') || isLoaded(x + 'R'));
       });
-      // An empty L/R is covered (→ omitted) if every bay over its floor is free.
-      const lrCovered = k => {
-        const over = bays.filter(b => overlaps(b, k));
-        return over.length > 0 && over.every(b => bayFree[b.s]);
-      };
+      // An empty L/R is omitted once a free bay's /N line already describes
+      // that floor as empty — a single free bay covering it is enough.
+      const lrCovered = s => baySecs.some(b => bayFree[b] && bayCovers[b].includes(s));
 
-      secList.forEach((s, k) => {
+      secList.forEach(s => {
         // Loaded lines in L, P, R order.
         ['L', 'P', 'R'].forEach(sfx => {
           const c = s + sfx;
@@ -2589,7 +2670,7 @@
           const c = s + sfx;
           if (!def.positions.includes(c) || isLoaded(c)) return;
           if (blocked.has(c)) return;   // under a loaded pallet's footprint
-          if (lrCovered(k)) return;     // floor already described by free bay(s)
+          if (lrCovered(s)) return;     // floor already described by a free bay
           emitEmpty(c);
         };
         emitEmptyLR('L');
@@ -2625,6 +2706,7 @@
 
   function generateCpm() {
     if (!validateFlightHeader()) return;
+    if (!validateFootprints()) return;
     const missing = getActivePositionsForCpm().filter(r => !r.isBulk && !getUldState(r.id, r.code).num.trim()).length;
     if (missing > 0 && !confirm(missing + ' position' + (missing === 1 ? ' has' : 's have') + ' no ULD number and will show NIL. Generate anyway?')) {
       return;
