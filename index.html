@@ -2059,8 +2059,13 @@
     }
   }
 
+  // Holds whose entered weights don't add up to the loadsheet target.
+  // Refreshed on every keystroke by calculate(), read at Proceed.
+  let holdDiffs = [];
+
   function calculate() {
     let grandCalc = 0, grandTarget = 0, anyEntered = false, bagTotal = 0;
+    const diffs = [];
 
     HOLD_DEFS.forEach(def => {
       const codes = def.positions;
@@ -2068,6 +2073,15 @@
       const total = computeFlexibleHold(def.key, codes, target);
       const state = updateStatus('status-' + def.key, total, target);
       updateGauge(def.key, total, target);
+
+      if (state === 'mismatch') {
+        diffs.push({
+          title: def.title,
+          total: Math.round(total),
+          target: Math.round(target),
+          diff: Math.round((total - target) * 100) / 100
+        });
+      }
 
       const dot = document.getElementById('dot-' + def.key);
       if (dot) dot.className = 'nav-dot ' + (state === 'match' ? 'match' : state === 'empty' ? 'empty' : '');
@@ -2102,6 +2116,7 @@
     const chip = document.getElementById('bag-chip');
     document.getElementById('bag-count').textContent = bagTotal;
     chip.classList.toggle('visible', bagTotal > 0);
+    holdDiffs = diffs;
 
     const grandBadge = document.getElementById('grand-status');
     if (!anyEntered) {
@@ -2372,9 +2387,10 @@
         });
         if (hits.length) {
           conflicts.push({
-            pallet: s + 'P', type, hits,
-            stations: geo.covers(s, type),
-            firstId: pid(def.key, hits[0])
+            pallet: s + 'P',
+            hits,
+            palletId: pid(def.key, s + 'P'),
+            hitIds: hits.map(h => pid(def.key, h))
           });
         }
       });
@@ -2388,17 +2404,25 @@
     });
     const conflicts = findFootprintConflicts();
     if (!conflicts.length) return true;
+
+    const joinAnd = arr => arr.length <= 1 ? (arr[0] || '')
+      : arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
     const lines = conflicts.map(c =>
-      `• ${c.type} at ${c.pallet} covers station${c.stations.length === 1 ? '' : 's'} ` +
-      `${c.stations.join(' and ')} — but ${c.hits.join(' and ')} ${c.hits.length === 1 ? 'is' : 'are'} loaded`);
-    conflicts.forEach(c => c.hits.forEach(h => {
-      const el = document.getElementById(c.firstId.split('-')[0] + '-' + h.toLowerCase());
-      if (el) el.classList.add('field-error');
+      `• Position ${c.pallet} and position${c.hits.length === 1 ? '' : 's'} ` +
+      `${joinAnd(c.hits)} share the same space`);
+
+    // Flag BOTH sides — either one could be the mistake.
+    const els = [];
+    conflicts.forEach(c => [c.palletId, ...c.hitIds].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.classList.add('field-error'); els.push(el); }
     }));
-    alert('Impossible loading — a pallet and a container cannot share the same floor:\n\n' +
-      lines.join('\n') +
-      '\n\nRemove the container, or move the pallet to another bay.');
-    const first = document.getElementById(conflicts[0].firstId);
+
+    alert('Impossible loading:\n\n' + lines.join('\n'));
+
+    // Jump to whichever conflicting field sits highest on the page.
+    const first = els.sort((a, b) =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1)[0];
     if (first) {
       first.scrollIntoView({ behavior: 'smooth', block: 'center' });
       first.focus({ preventScroll: true });
@@ -2438,11 +2462,21 @@
     return true;
   }
 
+  // A hold not matching its loadsheet target is worth flagging, but it isn't
+  // a blocker — the CPM still describes what's physically in the aircraft.
+  function confirmLoadsheetDiff() {
+    if (!holdDiffs.length) return true;
+    const lines = holdDiffs.map(h =>
+      `• ${h.title}: ${h.total} kg loaded vs ${h.target} kg on the loadsheet ` +
+      `(${h.diff > 0 ? '+' : ''}${h.diff} kg)`);
+    return confirm('Loadsheet mismatch:\n\n' + lines.join('\n') + '\n\nProceed anyway?');
+  }
+
   function openCpmModal() {
-    // Checked here, at Proceed, rather than at Generate: the conflicting
-    // positions are on this page, so they can be highlighted and scrolled
-    // to while they're still visible.
+    // Order matters: an impossible loading is a hard stop and must be dealt
+    // with first, so it's never buried behind the mismatch warning.
     if (!validateFootprints()) return;
+    if (!confirmLoadsheetDiff()) return;
     document.getElementById('cpm-overlay').classList.add('open');
     document.getElementById('cpm-form-view').style.display = '';
     document.getElementById('cpm-result-view').style.display = 'none';
