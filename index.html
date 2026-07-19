@@ -208,6 +208,28 @@
   }
   .theme-btn.active { background: var(--accent); color: var(--on-accent); }
 
+  /* Layout toggle uses the same segmented look as the theme toggle. */
+  .layout-toggle {
+    display: flex;
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 2px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .layout-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 6px 9px;
+    border-radius: 6px;
+    min-height: 28px;
+  }
+  .layout-btn.active { background: var(--accent); color: var(--on-accent); }
+
   /* ---------- Aircraft chip in the topbar (opens the home screen) ---------- */
   .ac-chip {
     display: flex;
@@ -1043,7 +1065,7 @@
     margin-bottom: 6px;
   }
   .uld-row-head .meta { color: var(--text-dim); font-weight: 600; }
-  .uld-row-inputs { display: grid; grid-template-columns: 1fr 1.4fr; gap: 6px; }
+  .uld-row-inputs { display: grid; grid-template-columns: minmax(70px, 1fr) minmax(0, 2fr) minmax(0, 0.9fr); gap: 6px; align-items: center; }
   .uld-row input { padding: 8px; font-size: 14px; text-transform: uppercase; }
   .uld-empty { font-size: 12.5px; color: var(--text-dim); font-style: italic; padding: 8px 0 16px; }
 
@@ -1198,77 +1220,62 @@
      Below the breakpoint everything stays in the stacked mobile layout. */
   .orientation-hint { display: none; }
 
-  @media (min-width: 1500px) {
-    main {
-      max-width: 2300px;
-      display: grid;
-      grid-template-columns: var(--hold-cols, minmax(0,1fr) minmax(0,3fr) minmax(0,3fr) minmax(0,6fr) minmax(0,3fr));
-      gap: 12px;
-      align-items: stretch;
-      padding: 14px 20px 0;
-    }
-    .hold-card { margin-bottom: 0; display: flex; flex-direction: column; }
-    #card-h5 { grid-column: 1; grid-row: 1; }
-    #card-h4 { grid-column: 2; grid-row: 1; }
-    #card-h3 { grid-column: 3; grid-row: 1; }
-    #card-h2 { grid-column: 4; grid-row: 1; }
-    #card-h1 { grid-column: 5; grid-row: 1; }
-
-    /* Equalize every card's chrome height so tile grids start at the same y:
-       single-line titles, compact single-line target label. */
-    .hold-head h2 { white-space: nowrap; }
-    .hold-head { min-height: 26px; }
-    .t-full { display: none; }
-    .t-abbr { display: inline; }
-    .target-row label { white-space: nowrap; }
-
-    /* Sections as columns (reversed via --sec), L/P/R as rows.
-       The grid uses 2 subcolumns per section so P tiles can span 1.5
-       sections — pallet bays tile the full hold length, just like real
-       PMC footprints (4 bays = 6 sections in Hold 2).
-       All holds share the same 3 equal rows — cards stretch to equal height,
-       so row 2 (P) lines up across every hold, including BULK. */
-    .tiles-grid {
-      flex: 1;
-      grid-template-columns: repeat(var(--subs, 6), minmax(0, 1fr));
-      grid-template-rows: repeat(3, minmax(0, 1fr));
-      align-content: stretch;
-    }
-    .tile.pos-l { grid-column: calc(var(--sec) * 2 - 1) / span 2; grid-row: 1; }
-    .tile.pos-p { grid-column: var(--pstart) / span var(--pspan); grid-row: 2; }
-    .tile.pos-r { grid-column: calc(var(--sec) * 2 - 1) / span 2; grid-row: 3; }
-    /* Bulk: single tile on the P row → reads as the tapering tail. */
-    .tile.pos-bulk { grid-column: 1 / -1; grid-row: 2; }
-
-    /* Tiles are narrow in aircraft view: compact buttons (labels are
-       single codes: B / CSU / C / M / X). */
-    .mode-btn { font-size: 9px; padding: 5px 1px; min-height: 26px; }
-    .mode-seg { grid-template-columns: repeat(3, 1fr); }
-    .mode-seg.seg-nobags { grid-template-columns: repeat(2, 1fr); }
-    .tile { padding: 6px; }
-    .tile label { font-size: 9px; }
-    .tile-head { flex-wrap: wrap; }
-    .tile input { font-size: 14px; padding: 7px 6px; }
-    .chip { font-size: 8.5px; }
-
-    .settings-wrap { max-width: 2300px; padding: 0 20px; }
-    /* Keep the action buttons compact and centered rather than stretching
-       across the whole ultrawide. */
-    .bottombar-row { max-width: 640px; }
-
-    .orientation-hint {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      max-width: 2300px;
-      margin: 12px auto -6px;
-      padding: 0 20px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+  /* ---------- Wide (horizontal / aircraft) layout ---------------
+     Applied when body.wide is set. The layout mode toggle (Auto /
+     Vertical / Horizontal) sets body.wide via JS based on the mode
+     and the current viewport width. In Auto mode, .wide is on at
+     ≥1500px viewport, off below. */
+  body.wide main {
+    max-width: 2300px;
+    display: grid;
+    grid-template-columns: var(--hold-cols, minmax(0,1fr) minmax(0,3fr) minmax(0,3fr) minmax(0,6fr) minmax(0,3fr));
+    gap: 12px;
+    align-items: stretch;
+    padding: 14px 20px 0;
+  }
+  body.wide .hold-card { margin-bottom: 0; display: flex; flex-direction: column; }
+  body.wide #card-h5 { grid-column: 1; grid-row: 1; }
+  body.wide #card-h4 { grid-column: 2; grid-row: 1; }
+  body.wide #card-h3 { grid-column: 3; grid-row: 1; }
+  body.wide #card-h2 { grid-column: 4; grid-row: 1; }
+  body.wide #card-h1 { grid-column: 5; grid-row: 1; }
+  body.wide .hold-head h2 { white-space: nowrap; }
+  body.wide .hold-head { min-height: 26px; }
+  body.wide .t-full { display: none; }
+  body.wide .t-abbr { display: inline; }
+  body.wide .target-row label { white-space: nowrap; }
+  body.wide .tiles-grid {
+    flex: 1;
+    grid-template-columns: repeat(var(--subs, 6), minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    align-content: stretch;
+  }
+  body.wide .tile.pos-l { grid-column: calc(var(--sec) * 2 - 1) / span 2; grid-row: 1; }
+  body.wide .tile.pos-p { grid-column: var(--pstart) / span var(--pspan); grid-row: 2; }
+  body.wide .tile.pos-r { grid-column: calc(var(--sec) * 2 - 1) / span 2; grid-row: 3; }
+  body.wide .tile.pos-bulk { grid-column: 1 / -1; grid-row: 2; }
+  body.wide .mode-btn { font-size: 9px; padding: 5px 1px; min-height: 26px; }
+  body.wide .mode-seg { grid-template-columns: repeat(3, 1fr); }
+  body.wide .mode-seg.seg-nobags { grid-template-columns: repeat(2, 1fr); }
+  body.wide .tile { padding: 6px; }
+  body.wide .tile label { font-size: 9px; }
+  body.wide .tile-head { flex-wrap: wrap; }
+  body.wide .tile input { font-size: 14px; padding: 7px 6px; }
+  body.wide .chip { font-size: 8.5px; }
+  body.wide .settings-wrap { max-width: 2300px; padding: 0 20px; }
+  body.wide .bottombar-row { max-width: 640px; }
+  body.wide .orientation-hint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 2300px;
+    margin: 12px auto -6px;
+    padding: 0 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 </style>
 </head>
@@ -1356,6 +1363,11 @@
     <h1 onclick="logoReset()" title="Back to start — erases all data"><span>CPM</span> Buddy</h1>
     <div style="display:flex; align-items:center; gap:8px;">
       <div class="ac-chip"><span>A330-900 · A390</span></div>
+      <div class="layout-toggle" id="layout-toggle" title="Choose layout: Auto follows the viewport, Vertical forces the stacked mobile view, Horizontal forces the aircraft view.">
+        <button type="button" class="layout-btn active" data-layout="auto" onclick="setLayout('auto')">Auto</button>
+        <button type="button" class="layout-btn" data-layout="vertical" onclick="setLayout('vertical')">Vert</button>
+        <button type="button" class="layout-btn" data-layout="horizontal" onclick="setLayout('horizontal')">Horiz</button>
+      </div>
       <div class="theme-toggle" id="theme-toggle">
         <button type="button" class="theme-btn active" data-theme="auto" onclick="setTheme('auto')">Auto</button>
         <button type="button" class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
@@ -1452,7 +1464,7 @@
           <input type="text" id="hdr-dest" placeholder="e.g. AGP" maxlength="4" style="text-transform:uppercase" oninput="clearFieldError(this); updateFlightSummary();">
         </div>
       </div>
-      <div class="field-row">
+      <div class="field-row" style="grid-template-columns: 1fr;">
         <div class="field" style="position:relative;">
           <label>Date</label>
           <button type="button" class="date-trigger" id="cpm-date-trigger" onclick="toggleCalendar()">
@@ -1471,10 +1483,6 @@
             <div class="cal-grid" id="cal-grid"></div>
             <button type="button" class="cal-today" onclick="calSelectToday()">Today</button>
           </div>
-        </div>
-        <div class="field">
-          <label>ULD suffix</label>
-          <input type="text" id="cpm-callsign" placeholder="e.g. DK" maxlength="3" style="text-transform:uppercase" oninput="persist()">
         </div>
       </div>
       <div class="field">
@@ -1938,19 +1946,18 @@
     document.getElementById('hdr-reg').value = document.getElementById('wiz-reg').value.trim().toUpperCase();
     document.getElementById('hdr-dest').value = document.getElementById('wiz-dest').value.trim().toUpperCase();
 
-    // Date from the wizard becomes the CPM date (still editable in the form).
     cpmSelectedDate = wizSelectedDate;
     const disp = document.getElementById('cpm-date-display');
     disp.textContent = formatDateDisplay(cpmSelectedDate);
     disp.classList.remove('placeholder');
 
-    // Prefill the ULD suffix from the airline prefix — but never clobber a
-    // manual edit: only touch it when empty or when the flight changed.
-    const suffixEl = document.getElementById('cpm-callsign');
-    const newFlight = document.getElementById('hdr-flight').value;
-    if (!suffixEl.value.trim() || suffixEl.value.trim().toUpperCase() === deriveUldSuffix(prevFlight)) {
-      suffixEl.value = deriveUldSuffix(newFlight);
-    }
+    // Propagate the new flight-derived suffix to any position still holding
+    // the old auto-derived value. Manually-edited suffixes are preserved.
+    const oldSuffix = deriveUldSuffix(prevFlight);
+    const newSuffix = deriveUldSuffix(document.getElementById('hdr-flight').value);
+    Object.values(uldState).forEach(s => {
+      if (!s.suffix || s.suffix === oldSuffix) s.suffix = newSuffix;
+    });
 
     updateFlightSummary();
     document.body.classList.remove('wizard-active');
@@ -2326,7 +2333,7 @@
         positions[id] = {
           mode,
           val,
-          uld: uld ? { type: uld.type, num: uld.num } : null
+          uld: uld ? { type: uld.type, num: uld.num, suffix: uld.suffix || '' } : null
         };
       }));
       const targets = {};
@@ -2335,12 +2342,11 @@
         if (v !== '') targets[def.key] = v;
       });
       const state = {
-        v: 1,
+        v: 2,
         flight: document.getElementById('hdr-flight').value,
         reg: document.getElementById('hdr-reg').value,
         dest: document.getElementById('hdr-dest').value,
         date: cpmSelectedDate ? cpmSelectedDate.toISOString() : null,
-        suffix: document.getElementById('cpm-callsign').value,
         si: document.getElementById('cpm-si').value,
         includeEmpty: document.getElementById('cpm-include-empty').checked,
         noHeader: document.getElementById('cpm-no-header').checked,
@@ -2361,7 +2367,6 @@
       document.getElementById('hdr-flight').value = state.flight || '';
       document.getElementById('hdr-reg').value = state.reg || '';
       document.getElementById('hdr-dest').value = state.dest || '';
-      document.getElementById('cpm-callsign').value = state.suffix || '';
       document.getElementById('cpm-si').value = state.si || '';
       document.getElementById('cpm-include-empty').checked = !!state.includeEmpty;
       document.getElementById('cpm-no-header').checked = !!state.noHeader;
@@ -2386,7 +2391,13 @@
         if (!el) return;
         if (p.mode) setMode(id, p.mode);
         el.value = p.val || '';
-        if (p.uld) uldState[id] = { type: p.uld.type, num: p.uld.num || '' };
+        if (p.uld) {
+          uldState[id] = {
+            type: p.uld.type,
+            num: p.uld.num || '',
+            suffix: p.uld.suffix != null ? p.uld.suffix : deriveUldSuffix(state.flight || '')
+          };
+        }
       });
       updateFlightSummary();
       return !!(state.flight || state.reg || Object.keys(state.positions || {}).length || Object.keys(state.targets || {}).length);
@@ -2605,31 +2616,50 @@
   }
 
   // ---------------------------------------------------------------
-  // Loading-page tab order: right-to-left within each row, top down.
-  //  Row 1  targets   h5 → h4 → h3 → h2 → h1
-  //  Row 2  L         43L → 11L  (hold 5 → hold 1)
-  //  Row 3  P + BULK  BULK → 42P → 11P
-  //  Row 4  R         43R → 11R
-  // Explicit tabindex overrides DOM order, which follows the wide
-  // layout's hold-5-on-the-left arrangement.
+  // Loading-page tab order — depends on layout mode.
+  //
+  // Horizontal / Auto-at-wide: right-to-left row-major (matches the
+  // aircraft view where hold 5 is on the left, hold 1 on the right).
+  //   Row 1  targets     h5 → h4 → h3 → h2 → h1
+  //   Row 2  L           43L → 11L
+  //   Row 3  P + BULK    BULK → 42P → 11P
+  //   Row 4  R           43R → 11R
+  //
+  // Vertical / Auto-at-narrow: natural top-to-bottom reading order.
+  // Holds stack 1 → 5; within each hold the target comes first, then
+  // positions in DOM order (11L, 11P, 11R, 12L, 12P, …), then BULK.
   // ---------------------------------------------------------------
   function applyLoadingTabOrder() {
-    const rows = [[], [], [], []];
-    // Row 1 — targets
-    ['h5', 'h4', 'h3', 'h2', 'h1'].forEach(k => rows[0].push('target-' + k));
-    HOLD_DEFS.slice().reverse().forEach(def => {
-      if (def.isBulk) { rows[2].push(pid(def.key, 'BULK')); return; }
-      const secs = sectionsOf(def).slice().reverse();
-      secs.forEach(s => { if (def.positions.includes(s + 'L')) rows[1].push(pid(def.key, s + 'L')); });
-      secs.forEach(s => { if (def.positions.includes(s + 'P')) rows[2].push(pid(def.key, s + 'P')); });
-      secs.forEach(s => { if (def.positions.includes(s + 'R')) rows[3].push(pid(def.key, s + 'R')); });
-    });
+    const wide = document.body.classList.contains('wide');
+    const ids = [];
+    if (wide) {
+      const rows = [[], [], [], []];
+      ['h5', 'h4', 'h3', 'h2', 'h1'].forEach(k => rows[0].push('target-' + k));
+      HOLD_DEFS.slice().reverse().forEach(def => {
+        if (def.isBulk) { rows[2].push(pid(def.key, 'BULK')); return; }
+        const secs = sectionsOf(def).slice().reverse();
+        secs.forEach(s => { if (def.positions.includes(s + 'L')) rows[1].push(pid(def.key, s + 'L')); });
+        secs.forEach(s => { if (def.positions.includes(s + 'P')) rows[2].push(pid(def.key, s + 'P')); });
+        secs.forEach(s => { if (def.positions.includes(s + 'R')) rows[3].push(pid(def.key, s + 'R')); });
+      });
+      rows.forEach(r => r.forEach(id => ids.push(id)));
+    } else {
+      HOLD_DEFS.forEach(def => {
+        ids.push('target-' + def.key);
+        def.positions.forEach(code => ids.push(pid(def.key, code)));
+      });
+    }
 
+    // Clear any previous tabindex on holds/targets, then reassign.
+    document.querySelectorAll('[data-tab-loading]').forEach(el => {
+      el.removeAttribute('tabindex');
+      el.removeAttribute('data-tab-loading');
+    });
     let idx = 1;
-    rows.forEach(row => row.forEach(id => {
+    ids.forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.setAttribute('tabindex', String(idx++));
-    }));
+      if (el) { el.setAttribute('tabindex', String(idx++)); el.setAttribute('data-tab-loading', '1'); }
+    });
   }
 
   // ---------------------------------------------------------------
@@ -2683,7 +2713,15 @@
   }
 
   function getUldState(id, code) {
-    if (!uldState[id]) uldState[id] = { type: defaultUldType(code), num: '' };
+    if (!uldState[id]) uldState[id] = {
+      type: defaultUldType(code),
+      num: '',
+      suffix: deriveUldSuffix(document.getElementById('hdr-flight').value)
+    };
+    // Backfill for state carried over from an older session.
+    if (uldState[id].suffix == null) {
+      uldState[id].suffix = deriveUldSuffix(document.getElementById('hdr-flight').value);
+    }
     return uldState[id];
   }
 
@@ -2708,6 +2746,11 @@
   function saveUldNum(id) {
     const el = document.getElementById('uld-num-' + id);
     if (el && uldState[id]) uldState[id].num = el.value;
+    persist();
+  }
+  function saveUldSuffix(id) {
+    const el = document.getElementById('uld-suffix-' + id);
+    if (el && uldState[id]) uldState[id].suffix = (el.value || '').toUpperCase();
     persist();
   }
 
@@ -2735,6 +2778,7 @@
         <div class="uld-row-inputs">
           ${typeControl}
           <input type="text" inputmode="numeric" id="uld-num-${r.id}" placeholder="ULD number e.g. 12345" value="${st.num.replace(/"/g, '&quot;')}" oninput="saveUldNum('${r.id}')">
+          <input type="text" id="uld-suffix-${r.id}" placeholder="Suffix" maxlength="3" style="text-transform:uppercase" value="${(st.suffix || '').replace(/"/g, '&quot;')}" oninput="saveUldSuffix('${r.id}')">
         </div>
       </div>`;
     }).join('');
@@ -2924,10 +2968,6 @@
     document.getElementById('cpm-form-view').style.display = '';
     document.getElementById('cpm-result-view').style.display = 'none';
     if (!cpmSelectedDate) calSelectToday(true);
-    // Backfill the ULD suffix from the flight's airline prefix if it's empty
-    // (e.g. after "Clear all fields") — still fully editable.
-    const suffixEl = document.getElementById('cpm-callsign');
-    if (!suffixEl.value.trim()) suffixEl.value = deriveUldSuffix(document.getElementById('hdr-flight').value);
     refreshUldList();
   }
 
@@ -3065,7 +3105,6 @@
     const flight = document.getElementById('hdr-flight').value.trim().toUpperCase();
     const reg = document.getElementById('hdr-reg').value.trim().toUpperCase();
     const dest = document.getElementById('hdr-dest').value.trim().toUpperCase();
-    const callsign = document.getElementById('cpm-callsign').value.trim().toUpperCase();
     const si = document.getElementById('cpm-si').value.trim();
     const includeEmpty = document.getElementById('cpm-include-empty').checked;
     const noHeader = document.getElementById('cpm-no-header').checked;
@@ -3096,7 +3135,8 @@
       } else {
         const st = getUldState(r.id, r.code);
         const uldNum = st.num.trim().toUpperCase();
-        const uld = uldNum ? (st.type + uldNum + callsign) : 'NIL';
+        const rowSuffix = (st.suffix || '').trim().toUpperCase();
+        const uld = uldNum ? (st.type + uldNum + rowSuffix) : 'NIL';
         parts.push(`-${r.code}/${uld}/${dest}/${weight}/${code}`);
         readableRows.push({ pos: r.code, content: CONTENT_LABEL[r.mode], uld, weight, dest });
       }
@@ -3207,7 +3247,6 @@
   }
 
   function clearCpmFields() {
-    document.getElementById('cpm-callsign').value = '';
     document.getElementById('cpm-si').value = '';
     document.getElementById('cpm-include-empty').checked = false;
     document.getElementById('cpm-no-header').checked = false;
@@ -3287,6 +3326,47 @@
   }
 
   // ---------------------------------------------------------------
+  // Layout mode — three-way segmented toggle in the topbar.
+  //   auto        : follows viewport width, wide at ≥1500px
+  //   vertical    : force stacked mobile layout at any width
+  //   horizontal  : force wide/aircraft layout at any width
+  // ---------------------------------------------------------------
+  const WIDE_BREAKPOINT = 1500;
+  let currentLayoutMode = 'auto';
+
+  function applyLayoutClasses() {
+    let wide;
+    if (currentLayoutMode === 'horizontal') wide = true;
+    else if (currentLayoutMode === 'vertical') wide = false;
+    else wide = window.innerWidth >= WIDE_BREAKPOINT;
+    document.body.classList.toggle('wide', wide);
+    document.body.classList.toggle('layout-forced-horizontal', currentLayoutMode === 'horizontal');
+    document.body.classList.toggle('layout-forced-vertical', currentLayoutMode === 'vertical');
+    applyLoadingTabOrder();
+  }
+
+  function setLayout(mode) {
+    currentLayoutMode = mode;
+    document.querySelectorAll('#layout-toggle .layout-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.layout === mode));
+    try { localStorage.setItem('cpmbuddy-layout', mode); } catch (e) { /* ignore */ }
+    applyLayoutClasses();
+    // Wide layout can add/remove the orientation hint row, changing topbar
+    // heights and gauge caps — nudge dependent measurements.
+    setTimeout(measureTopbar, 0);
+  }
+
+  function initLayout() {
+    let saved = 'auto';
+    try { saved = localStorage.getItem('cpmbuddy-layout') || 'auto'; } catch (e) { /* ignore */ }
+    setLayout(saved);
+    // Only Auto listens to viewport resizes.
+    window.addEventListener('resize', () => {
+      if (currentLayoutMode === 'auto') applyLayoutClasses();
+    });
+  }
+
+  // ---------------------------------------------------------------
   // Init
   // ---------------------------------------------------------------
   function measureTopbar() {
@@ -3301,11 +3381,10 @@
 
   renderAll();
   loadSettings();
-  applyLoadingTabOrder();
+  initLayout(); // sets body.wide + tab order for the current mode
   const hadSession = loadPersistedState();
   calculate();
   if (hadSession) {
-    // Refresh / reopened tab — jump straight back into the loading page.
     document.body.classList.remove('home-active');
   }
   measureTopbar();
