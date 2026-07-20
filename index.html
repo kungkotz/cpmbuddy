@@ -1306,6 +1306,19 @@
   body.wide .chip { font-size: 8.5px; }
   body.wide .settings-wrap { max-width: 2300px; padding: 0 20px; }
   body.wide .bottombar-row { max-width: 640px; }
+
+  /* In wide mode the aircraft grid is short, so a viewport-fixed bottom
+     bar leaves a big empty band above it. Put the bar back in normal flow
+     directly under the aircraft, and drop the reserved bottom padding. */
+  body.wide { padding-bottom: 0; }
+  body.wide .bottombar {
+    position: static;
+    background: transparent;
+    border-top: none;
+    backdrop-filter: none;
+    padding: 14px 20px 20px;
+    margin-top: 4px;
+  }
   body.wide .orientation-hint {
     display: flex;
     justify-content: space-between;
