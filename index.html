@@ -208,6 +208,33 @@
   }
   .theme-btn.active { background: var(--accent); color: var(--on-accent); }
 
+  /* Clear fields / Start over live in the topbar, sized to match the
+     theme + zoom buttons. Semantic colors: amber warning, red danger. */
+  .topbar-action-btn {
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 8px;
+    min-height: 32px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .topbar-action-btn.warn-btn {
+    background: var(--warning-bg);
+    border-color: var(--warning);
+    color: var(--warning);
+  }
+  .topbar-action-btn.danger-btn {
+    background: var(--error-bg);
+    border-color: var(--error);
+    color: var(--error);
+  }
+  .topbar-action-btn:active { filter: brightness(1.15); }
+
   /* Zoom control — mirrors Chrome's − / reset / + and lets the wide
      aircraft view fit smaller windows by zooming out. */
   .zoom-toggle {
@@ -915,9 +942,8 @@
     width: 100%;
   }
   .clear-btn:active { background: var(--field-bg); color: var(--text); }
-  .bottombar-row { display: flex; gap: 8px; max-width: 640px; width: 100%; margin: 0 auto; flex-wrap: wrap; }
-  .bottombar-row .clear-btn { flex: 1 1 auto; min-width: 0; padding-left: 10px; padding-right: 10px; }
-  .bottombar-row .cpm-launch-btn { flex-basis: 100%; }
+  .bottombar-row { display: flex; gap: 8px; max-width: 640px; width: 100%; margin: 0 auto; }
+  .bottombar-row .clear-btn { flex: 1 1 0; min-width: 0; padding-left: 10px; padding-right: 10px; }
 
   /* Semantic bottom-bar buttons — distinct colors so nothing blends in.
      Neutral (Back), warning (Clear fields), danger (Start over),
@@ -1378,6 +1404,8 @@
   <div class="topbar-titlerow">
     <h1 onclick="logoReset()" title="Back to start — erases all data"><span>CPM</span> Buddy</h1>
     <div style="display:flex; align-items:center; gap:8px;">
+      <button type="button" class="topbar-action-btn warn-btn" onclick="clearAllFields()" title="Clear all loading data — keeps flight info">Clear fields</button>
+      <button type="button" class="topbar-action-btn danger-btn" onclick="startOver()" title="Erase everything and start over">Start over</button>
       <div class="ac-chip"><span>A330-900 · A390</span></div>
       <div class="zoom-toggle" id="zoom-toggle" title="Zoom the whole page — like Ctrl − / Ctrl 0 / Ctrl + in the browser. Zooming out lets the horizontal aircraft view fit in a smaller window.">
         <button type="button" class="zoom-btn" onclick="zoomStep(-1)" aria-label="Zoom out" title="Zoom out (Ctrl −)">−</button>
@@ -1447,8 +1475,6 @@
 <div class="bottombar">
   <div class="bottombar-row">
     <button class="clear-btn back-btn" onclick="goBack()">← Back</button>
-    <button class="clear-btn warn-btn" onclick="clearAllFields()">Clear fields</button>
-    <button class="clear-btn danger-btn" onclick="startOver()">Start over</button>
     <button class="clear-btn cpm-launch-btn" onclick="openCpmModal()">Proceed →</button>
   </div>
 </div>
@@ -1876,7 +1902,7 @@
       d.classList.toggle('active', i === n);
       d.classList.toggle('done', i < n);
     });
-    document.getElementById('wiz-next-btn').textContent = n === 3 ? 'Start' : 'Next';
+    document.getElementById('wiz-next-btn').textContent = 'Next';
     updateWizChip();
     if (n === 3) renderWizCal();
     const input = document.getElementById(['wiz-flight', 'wiz-reg', 'wiz-dest'][n]);
