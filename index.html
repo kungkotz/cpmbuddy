@@ -240,6 +240,11 @@
     min-width: 44px;
     color: var(--text);
   }
+  .zoom-btn.zoom-fit {
+    font-size: 14px;
+    border-left: 1px solid var(--line);
+    border-radius: 0 6px 6px 0;
+  }
 
   /* ---------- Aircraft chip in the topbar (opens the home screen) ---------- */
   .ac-chip {
@@ -1378,6 +1383,7 @@
         <button type="button" class="zoom-btn" onclick="zoomStep(-1)" aria-label="Zoom out" title="Zoom out (Ctrl −)">−</button>
         <button type="button" class="zoom-btn zoom-reset" onclick="zoomReset()" title="Reset to 100% (Ctrl 0)"><span id="zoom-level">100%</span></button>
         <button type="button" class="zoom-btn" onclick="zoomStep(1)" aria-label="Zoom in" title="Zoom in (Ctrl +)">+</button>
+        <button type="button" class="zoom-btn zoom-fit" onclick="zoomFit()" aria-label="Fit to window" title="Fit the aircraft view to this window">⤢</button>
       </div>
       <div class="theme-toggle" id="theme-toggle">
         <button type="button" class="theme-btn active" data-theme="auto" onclick="setTheme('auto')">Auto</button>
@@ -3358,7 +3364,9 @@
   // smaller window instead of collapsing to the mobile layout — which
   // is the actual thing colleagues want when they shrink the window.
   // ---------------------------------------------------------------
-  const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5];
+  const ZOOM_STEPS = [0.3, 0.4, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5];
+  const ZOOM_MIN = ZOOM_STEPS[0];
+  const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1];
   let currentZoom = 1;
 
   function effectiveWidth() {
@@ -3393,11 +3401,32 @@
 
   function zoomReset() { applyZoom(1); }
 
+  // Fit-to-window: pick the zoom that makes the horizontal aircraft view
+  // fill the current pane. Handy when tiling the desktop into several
+  // windows — one tap re-fits after every re-tile instead of nudging − / +.
+  // Never zooms IN past 100% (that would just enlarge, not fit); only
+  // shrinks as needed, down to the 30% floor.
+  function zoomFit() {
+    const target = window.innerWidth / WIDE_BREAKPOINT;
+    let z;
+    if (target >= 1) {
+      // Pane is already wide enough for horizontal at 100%.
+      z = 1;
+    } else {
+      // Snap DOWN to the nearest step so the layout clears the breakpoint.
+      z = ZOOM_MIN;
+      for (let i = 0; i < ZOOM_STEPS.length; i++) {
+        if (ZOOM_STEPS[i] <= target) z = ZOOM_STEPS[i];
+      }
+    }
+    applyZoom(z);
+  }
+
   function initZoom() {
     let saved = 1;
     try {
       const v = parseFloat(localStorage.getItem('cpmbuddy-zoom'));
-      if (!isNaN(v) && v >= 0.5 && v <= 1.5) saved = v;
+      if (!isNaN(v) && v >= ZOOM_MIN && v <= ZOOM_MAX) saved = v;
     } catch (e) { /* ignore */ }
     applyZoom(saved);
 
