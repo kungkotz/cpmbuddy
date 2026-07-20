@@ -208,28 +208,6 @@
   }
   .theme-btn.active { background: var(--accent); color: var(--on-accent); }
 
-  /* Layout toggle uses the same segmented look as the theme toggle. */
-  .layout-toggle {
-    display: flex;
-    background: var(--bg-elev);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 2px;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-  .layout-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    font-size: 10.5px;
-    font-weight: 700;
-    padding: 6px 9px;
-    border-radius: 6px;
-    min-height: 28px;
-  }
-  .layout-btn.active { background: var(--accent); color: var(--on-accent); }
-
   /* ---------- Aircraft chip in the topbar (opens the home screen) ---------- */
   .ac-chip {
     display: flex;
@@ -1363,11 +1341,6 @@
     <h1 onclick="logoReset()" title="Back to start — erases all data"><span>CPM</span> Buddy</h1>
     <div style="display:flex; align-items:center; gap:8px;">
       <div class="ac-chip"><span>A330-900 · A390</span></div>
-      <div class="layout-toggle" id="layout-toggle" title="Choose layout: Auto follows the viewport, Vertical forces the stacked mobile view, Horizontal forces the aircraft view.">
-        <button type="button" class="layout-btn active" data-layout="auto" onclick="setLayout('auto')">Auto</button>
-        <button type="button" class="layout-btn" data-layout="vertical" onclick="setLayout('vertical')">Vert</button>
-        <button type="button" class="layout-btn" data-layout="horizontal" onclick="setLayout('horizontal')">Horiz</button>
-      </div>
       <div class="theme-toggle" id="theme-toggle">
         <button type="button" class="theme-btn active" data-theme="auto" onclick="setTheme('auto')">Auto</button>
         <button type="button" class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
@@ -3331,39 +3304,27 @@
   //   vertical    : force stacked mobile layout at any width
   //   horizontal  : force wide/aircraft layout at any width
   // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  // Layout follows the viewport automatically: wide (aircraft) view at
+  // ≥1500px, stacked mobile view below. body.wide drives the CSS, and
+  // the loading-page tab order adapts to whichever layout is showing.
+  // ---------------------------------------------------------------
   const WIDE_BREAKPOINT = 1500;
-  let currentLayoutMode = 'auto';
 
   function applyLayoutClasses() {
-    let wide;
-    if (currentLayoutMode === 'horizontal') wide = true;
-    else if (currentLayoutMode === 'vertical') wide = false;
-    else wide = window.innerWidth >= WIDE_BREAKPOINT;
-    document.body.classList.toggle('wide', wide);
-    document.body.classList.toggle('layout-forced-horizontal', currentLayoutMode === 'horizontal');
-    document.body.classList.toggle('layout-forced-vertical', currentLayoutMode === 'vertical');
-    applyLoadingTabOrder();
-  }
-
-  function setLayout(mode) {
-    currentLayoutMode = mode;
-    document.querySelectorAll('#layout-toggle .layout-btn').forEach(b =>
-      b.classList.toggle('active', b.dataset.layout === mode));
-    try { localStorage.setItem('cpmbuddy-layout', mode); } catch (e) { /* ignore */ }
-    applyLayoutClasses();
-    // Wide layout can add/remove the orientation hint row, changing topbar
-    // heights and gauge caps — nudge dependent measurements.
-    setTimeout(measureTopbar, 0);
+    const wide = window.innerWidth >= WIDE_BREAKPOINT;
+    if (document.body.classList.contains('wide') !== wide) {
+      document.body.classList.toggle('wide', wide);
+      applyLoadingTabOrder();
+      setTimeout(measureTopbar, 0);
+    }
   }
 
   function initLayout() {
-    let saved = 'auto';
-    try { saved = localStorage.getItem('cpmbuddy-layout') || 'auto'; } catch (e) { /* ignore */ }
-    setLayout(saved);
-    // Only Auto listens to viewport resizes.
-    window.addEventListener('resize', () => {
-      if (currentLayoutMode === 'auto') applyLayoutClasses();
-    });
+    document.body.classList.toggle('wide', window.innerWidth >= WIDE_BREAKPOINT);
+    applyLoadingTabOrder();
+    window.addEventListener('resize', applyLayoutClasses);
+    try { localStorage.removeItem('cpmbuddy-layout'); } catch (e) { /* stale key from older version */ }
   }
 
   // ---------------------------------------------------------------
